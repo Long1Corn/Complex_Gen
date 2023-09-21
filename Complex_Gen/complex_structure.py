@@ -3,7 +3,7 @@ from ase import Atoms, Atom
 from rdkit import Chem
 from rdkit.Chem import AllChem
 
-from functional import get_center_geo, get_bond_dst, find_ligand_pos, rodrigues_rotation_matrix
+from Complex_Gen.functional import get_center_geo, get_bond_dst, find_ligand_pos, rodrigues_rotation_matrix
 
 
 class Ligand:
