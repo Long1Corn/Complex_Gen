@@ -14,7 +14,7 @@ class Ligand:
     def __init__(self, binding_sites_idx: [int], smiles: str = None, structure: Atoms=None, anchor: np.ndarray = None, direction: np.ndarray = None):
         """
         :param smiles: SMILES string of the ligand
-        :param structure: ASE Atoms object of the ligand (provide one of the two)
+        :param structure: ASE Atoms object of the ligand (provide either one of the two)
         :param binding_sites_idx: A list of atom indices of the binding sites
         :param anchor: position of the binding site within the ligand
         :param direction: direction of the ligand, default to be the geometric center of the ligand

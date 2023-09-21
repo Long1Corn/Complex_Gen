@@ -8,6 +8,8 @@ Download the source code from github and install it using pip:
 ```bash
 git clone https://github.com/Long1Corn/Complex_Gen.git
 
+cd Complex_Gen
+ 
 pip install .
 ```
 
