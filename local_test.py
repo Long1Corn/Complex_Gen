@@ -8,7 +8,6 @@ from Complex_Gen.complex_structure import Ligand, Complex
 def CO():
     C1 = Atom('C', (0, 0, 0))
     O1 = Atom('O', (0, 0, 1.2))
-    anchor = numpy.array([0, 0, 0])
     return Atoms([C1, O1])
 
 
