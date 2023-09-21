@@ -1,5 +1,5 @@
 ## Complex_Gen
-Complex_Gen is designed for generating initial structures for transition metal based homogeneous complex catalyst. It allows user to define ligands based on SMILES representation or ASE ATOMS object, and automatically places ligand on center metal atom based on geometry.
+Complex_Gen is designed for generating initial structures for transition metal based homogeneous complex catalyst. It allows user to define ligands based on SMILES representation or ASE ATOMS object, and automatically places ligand on center metal atom based on geometry. It is still under development.
 
 ## Installation
 
@@ -29,7 +29,7 @@ ligand2 = Ligand(structure=CO(), binding_sites_idx=[0])
 
 # Define the complex based on center metal atom and coordination number
 com = Complex(center_atom="Rh", 
-              ligands=[ligand1, ligand2, ligand3, ligand4, ligand5], 
+              ligands=[ligand1, ligand2, ligand2, ligand2, ligand2], 
               shape="pentagonal_bipyramidal")
 
 com.generate_complex()
