@@ -8,5 +8,6 @@ setup(
         # List your package dependencies here
         'numpy~=1.26.0',
         'rdkit~=2023.3.3'
+        'ase ~=3.22.1'
     ],
 )
