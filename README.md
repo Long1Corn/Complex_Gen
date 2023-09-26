@@ -14,7 +14,7 @@ pip install .
 ```
 
 ## Usage
-A sample code can be found [here](local_test.py).
+A sample code can be found [here](sample_codes.ipynb).
 ```python
 # Define a ligand based on SMILES representation
 ligand1 = Ligand(smiles="c1ccccc1CC=CO", binding_sites_idx=[0,1,2,3,4,5])
@@ -36,4 +36,5 @@ com.generate_complex()
 
 # View the complex
 view(com.complex)
-
+```
+![sample.png](sample.png)
