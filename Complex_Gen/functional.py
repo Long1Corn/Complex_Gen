@@ -63,31 +63,35 @@ def find_near_atoms(structure: Atoms, anchor: np.ndarray, num: int):
     return idx[:num]
 
 
-def find_ligand_pos(structure, anchor, site: str) -> np.ndarray:
+def find_ligand_pos(structure, anchor, site, sites_loc_idx, center_geo_type=None) -> np.ndarray:
     """
     Find the directional vector of a ligand using anchor and the geometric center of the ligand.
     :param structure: ligand structure
-    :param anchor: 3d position within the ligand
+    :param anchor: 3d position within the ligand, could be np.ndarray or [np.ndarray]
+    :param site: type binding site of the ligand, could be str or [str]
+    :param sites_loc_idx: index of the binding site location, only used for bi-dentate
+    :param center_geo_type: type of geometric center of the ligand, only used for bi-dentate
     :return: 3d directional vector of the ligand
     """
     if len(structure) == 1:  # ligand is single atom
         ligand_pos = np.array([0, 0, 1])
 
-    elif site == "=":  # bind to pi bond
-        near_atoms_idx = find_near_atoms(structure, anchor, 2)
-        # find the vector of the pi bond
-        v_pi = structure[near_atoms_idx[0]].position - structure[near_atoms_idx[1]].position
+    # elif site == "=":  # bind to pi bond
+    #     near_atoms_idx = find_near_atoms(structure, anchor, 2)
+    #     # find the vector of the pi bond
+    #     v_pi = structure[near_atoms_idx[0]].position - structure[near_atoms_idx[1]].position
+    #
+    #     # find the vector of the ligand
+    #     ligand_center = find_mol_center(structure)
+    #     v_ligand = ligand_center - anchor
+    #
+    #     # find the normal component of the ligand vector subtracted by the pi bond vector
+    #     v_normal = v_ligand - np.dot(v_ligand, v_pi) * v_pi / np.linalg.norm(v_pi) **2
+    #
+    #     ligand_pos = v_normal
 
-        # find the vector of the ligand
-        ligand_center = find_mol_center(structure)
-        v_ligand = ligand_center - anchor
-
-        # find the normal component of the ligand vector subtracted by the pi bond vector
-        v_normal = v_ligand - np.dot(v_ligand, v_pi) * v_pi / np.linalg.norm(v_pi) **2
-
-        ligand_pos = v_normal
-
-    elif site == "ring":  # bind to ring
+    elif site == "ring" or site == "=":  # bind to ring
+        # find the plane of the ring or pi bond
         near_atoms_idx = find_near_atoms(structure, anchor, 3)
 
         v_1 = structure[near_atoms_idx[0]].position - structure[near_atoms_idx[1]].position
@@ -103,14 +107,44 @@ def find_ligand_pos(structure, anchor, site: str) -> np.ndarray:
         v_normal = v_normal * (np.sign(np.dot(v_normal, v_ligand)) + 1e-2)
 
         ligand_pos = v_normal
-    else:  # bind to atom
+
+    elif len(site) == 2: # bind to bi-dentate
+        geo_vector = get_center_geo(center_geo_type)
+
+        geo_vector = geo_vector[sites_loc_idx]
+
+        # find the vector on plane (v1,v2) and perpendicular to v_a12
+        anchor1 = anchor[0]
+        anchor2 = anchor[1]
+        anchors_center = (anchor1 + anchor2) / 2
+
+        v1 = geo_vector[0]
+        v2 = geo_vector[1]
+
+        v_a12 = anchor1 - anchor2
+
+        # Find the normal vector to the plane
+        n = np.cross(v1, v2)
+
+        # Find the desired vector
+        u = np.cross(n, v_a12)
+
+        # make v_normal and ligand the same direction
+        ligand_center = find_mol_center(structure)
+        v_ligand = ligand_center - anchors_center
+
+        u = u * (np.sign(np.dot(u, v_ligand)) + 1e-2)
+
+        ligand_pos = u
+
+    else:  # bind to one atom site
         ligand_center = find_mol_center(structure)
         ligand_pos = ligand_center - anchor
 
     return ligand_pos
 
 
-def get_bond_dst(atom1: str, atom2: str) -> float:
+def get_bond_dst(atom1: str, atom2, num_dentate:int, angel_factor=None) -> float:
     # todo: implement pi bond and ring
     """
     Get the bond distance between two atoms.
@@ -121,29 +155,37 @@ def get_bond_dst(atom1: str, atom2: str) -> float:
     :return: bond distance
     """
 
-    if atom1 == "=" or atom2 == "=":
-        # raise NotImplementedError("Bond distance for pi bond not implemented yet.")
-        if atom1 == "=":
-            atom = atom2
+    if num_dentate == 1 : # mono-dentate
+        if atom1 == "=" or atom2 == "=":
+            # raise NotImplementedError("Bond distance for pi bond not implemented yet.")
+            if atom1 == "=":
+                atom = atom2
+            else:
+                atom = atom1
+
+            s1 = Atoms(atom).numbers[0]
+            dst = covalent_radii[s1] + 0.7  # assuming bond length of pi site is 0.6 A
+
+        elif atom1 == "ring" or atom2 == "ring":
+            if atom1 == "ring":
+                atom = atom2
+            else:
+                atom = atom1
+
+            s1 = Atoms(atom).numbers[0]
+            dst = covalent_radii[s1] + 0.6  # assuming bond length of pi site is 0.5 A
         else:
-            atom = atom1
+            s1 = Atoms(atom1).numbers[0]
+            s2 = Atoms(atom2).numbers[0]
+            dst = (covalent_radii[s1] + covalent_radii[s2]) * 1.1
 
-        s1 = Atoms(atom).numbers[0]
-        dst = covalent_radii[s1] + 0.7  # assuming bond length of pi site is 0.6 A
-
-    elif atom1 == "ring" or atom2 == "ring":
-        # raise NotImplementedError("Bond distance for ring not implemented yet.")
-        if atom1 == "ring":
-            atom = atom2
-        else:
-            atom = atom1
-
-        s1 = Atoms(atom).numbers[0]
-        dst = covalent_radii[s1] + 0.6  # assuming bond length of pi site is 0.5 A
-    else:
+    elif num_dentate == 2: # bi-dentate
         s1 = Atoms(atom1).numbers[0]
-        s2 = Atoms(atom2).numbers[0]
-        dst = covalent_radii[s1] + covalent_radii[s2]
+        s21 = Atoms(atom2[0]).numbers[0]
+        s22 = Atoms(atom2[1]).numbers[0]
+
+        dst = (covalent_radii[s1] + 0.5*(covalent_radii[s21] + covalent_radii[s22])) * angel_factor * 1.2
+
     return dst
 
 

@@ -11,14 +11,27 @@ def CO():
     return Atoms([C1, O1])
 
 
-ligand1 = Ligand(smiles="c1ccccc1CC=CO", binding_sites_idx=[0,1,2,3,4,5])
-ligand2 = Ligand(smiles="C=CCC", binding_sites_idx=[0, 1])
-ligand3 = Ligand(structure=CO(), binding_sites_idx=[0])
-ligand4 = Ligand(structure=CO(), binding_sites_idx=[0])
-ligand5= Ligand(structure=CO(), binding_sites_idx=[0])
+def H():
+    H1 = Atom('H', (0, 0, 0))
+    return Atoms([H1])
+
+
+def PH3():
+    P1 = Atom('P', (0, 0, 0))
+    H1 = Atom('H', (0, -1, 1))
+    H2 = Atom('H', (0.866, 0.5, 1))
+    H3 = Atom('H', (-0.866, 0.5, 1))
+    return Atoms([P1, H1, H2, H3])
+
+
+ligand1 = Ligand(structure=H(), binding_sites_idx=[0], sites_loc_idx=[0])
+ligand2 = Ligand(structure=CO(), binding_sites_idx=[0], sites_loc_idx=[1])
+ligand3 = Ligand(smiles="NCCN", binding_sites_idx=[0, 3], sites_loc_idx=[2,3])
+# ligand4 = Ligand(structure=PH3(), binding_sites_idx=[0], sites_loc_idx=[3])
+ligand5 = Ligand(structure=PH3(), binding_sites_idx=[0], sites_loc_idx=[4])
 
 shape = "pentagonal_bipyramidal"
-com = Complex(center_atom="Rh", ligands=[ligand1, ligand2, ligand3, ligand4, ligand5], shape=shape)
+com = Complex(center_atom="Rh", ligands=[ligand1, ligand2, ligand3, ligand5], shape=shape)
 com.generate_complex()
 
 view(com.complex)

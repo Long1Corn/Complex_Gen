@@ -11,17 +11,25 @@ class Ligand:
     A class to represent a ligand.
     """
 
-    def __init__(self, binding_sites_idx: [int], smiles: str = None, structure: Atoms=None, anchor: np.ndarray = None, direction: np.ndarray = None):
+    def __init__(self, binding_sites_idx: [int], sites_loc_idx: [int], smiles: str = None, structure: Atoms = None,
+                 anchor: np.ndarray = None, direction: np.ndarray = None):
         """
         :param smiles: SMILES string of the ligand
         :param structure: ASE Atoms object of the ligand (provide either one of the two)
         :param binding_sites_idx: A list of atom indices of the binding sites
+        :param sites_loc_idx: A list of atom indices of the sites location
         :param anchor: position of the binding site within the ligand
         :param direction: direction of the ligand, default to be the geometric center of the ligand
         """
         self._structure = None
         self._rdkit_mol = None
         self._binding_sites_idx = binding_sites_idx
+        self._sites_loc_idx = sites_loc_idx
+
+        if len(sites_loc_idx) == 1:
+            self.dentate = 1
+        elif len(sites_loc_idx) == 2:
+            self.dentate = 2
 
         # get ligand structure (ASE ATOMS) from smiles or structure
         if smiles is not None:
@@ -31,23 +39,31 @@ class Ligand:
             self._structure = structure
 
         # get binding sites
-        if len(self._binding_sites_idx) == 1:
-            self._binding_sites = self._structure[self._binding_sites_idx[0]].symbol
-        elif len(self._binding_sites_idx) == 2:
-            self._binding_sites = "="
+        if len(self._sites_loc_idx) == 1:  # mono-dentate
+            if len(self._binding_sites_idx) == 1:
+                self._binding_sites = self._structure[self._binding_sites_idx[0]].symbol
+            elif len(self._binding_sites_idx) == 2:
+                self._binding_sites = "="
+            else:
+                self._binding_sites = "ring"
+
+        elif len(self._sites_loc_idx) == 2:  # bi-dentate
+            self._binding_sites = [self._structure[self._binding_sites_idx[0]].symbol,
+                                   self._structure[self._binding_sites_idx[1]].symbol]
+
         else:
-            self._binding_sites = "ring"
+            raise ValueError("Only mono-dentate and bi-dentate ligands are supported")
 
         # get anchor and direction
         if anchor is None:
-            self._anchor = self._find_anchor()
+            self._anchor = self._find_anchor(self.dentate)
         else:
             self._anchor = anchor
 
-        if direction is None:
-            self._direction = self._find_ligand_pos()
-        else:
-            self._direction = direction
+        # if direction is None:
+        #     self._direction = self._find_ligand_pos()
+        # else:
+        #     self._direction = direction
 
     def _get_structure_from_smiles(self):
         # Create RDKit molecule from SMILES
@@ -75,15 +91,21 @@ class Ligand:
         self._structure = ase_atoms
         self._rdkit_mol = mol
 
-    def _find_anchor(self):
-        """find the binding site to be the geometric center of all binding atoms"""
+    def _find_anchor(self, dentate: int):
+        if dentate == 1:
+            # find the binding site to be the geometric center of all binding atoms
+            anchor = np.mean(self._structure.get_positions()[self._binding_sites_idx], axis=0)
 
-        anchor = np.mean(self._structure.get_positions()[self._binding_sites_idx], axis=0)
+        elif dentate == 2:
+            # find the bindsite to be the locations of each binding atom
+            anchor = self._structure.get_positions()[self._binding_sites_idx]
+
         return anchor
 
-    def _find_ligand_pos(self):
+    def _find_ligand_pos(self, center_geo_type: str = None):
         """try to find the name of the binding site and the geometric center of the ligand"""
-        ligand_pos = find_ligand_pos(self._structure, self._anchor, self._binding_sites)
+        ligand_pos = find_ligand_pos(self._structure, self._anchor, self._binding_sites,
+                                     sites_loc_idx=self._sites_loc_idx, center_geo_type=center_geo_type)
 
         return ligand_pos
 
@@ -93,8 +115,6 @@ class Ligand:
 
     def __repr__(self):
         return f"Ligand({self.formula})"
-
-
 
 
 class Complex:
@@ -123,12 +143,33 @@ class Complex:
 
         center_geo = get_center_geo(self._shape)
 
-        if not len(center_geo) == len(self._ligands):
-            raise AssertionError(f"Number of ligands ({len(self._ligands)}) does not match the shape ({self._shape})")
+        total_ligand_sites = sum([len(x._sites_loc_idx) for x in self._ligands])
 
-        for i in range(len(center_geo)):
-            bond_dst = get_bond_dst(self._center_atom.symbol, self._ligands[i]._binding_sites)
-            ligand_coord = self.place_ligand(self._ligands[i], center_geo[i], bond_dst)
+        if not len(center_geo) == total_ligand_sites:
+            raise AssertionError(f"Number of ligands ({total_ligand_sites}) does not match the shape ({self._shape})")
+
+        for i in range(len(self._ligands)):
+            num_dentate = self._ligands[i].dentate
+            if num_dentate == 2:
+                # get angel between two binding sites
+                v1 = center_geo[self._ligands[i]._sites_loc_idx[0]]
+                v2 = center_geo[self._ligands[i]._sites_loc_idx[1]]
+                cos_theta = np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2) + 1e-2)
+                theta_rad = np.arccos(cos_theta)
+                angel_factor = np.cos(theta_rad / 2)
+
+                direction = (v1 + v2) / 2
+            elif num_dentate == 1:
+                angel_factor = None
+                direction = center_geo[self._ligands[i]._sites_loc_idx[0]]
+
+            bond_dst = get_bond_dst(self._center_atom.symbol, self._ligands[i]._binding_sites, num_dentate=num_dentate,
+                                    angel_factor=angel_factor)
+
+            # find the ligand direction
+            self._ligands[i]._direction = self._ligands[i]._find_ligand_pos(center_geo_type=self._shape)
+
+            ligand_coord = self.place_ligand(self._ligands[i], direction, bond_dst)
             com = com + ligand_coord
 
         self.complex = com
@@ -145,7 +186,10 @@ class Complex:
         :return: ASE Atoms Object, ligand structure with updated positions
         """
         ligand_structure = ligand._structure.copy()
-        anchor = ligand._anchor
+        if ligand.dentate == 1:
+            anchor = ligand._anchor
+        elif ligand.dentate == 2:
+            anchor = np.mean(ligand._anchor, axis=0)
 
         ligand_pos = ligand._direction
 
