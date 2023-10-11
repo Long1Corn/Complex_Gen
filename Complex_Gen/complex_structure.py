@@ -3,7 +3,8 @@ from ase import Atoms, Atom
 from rdkit import Chem
 from rdkit.Chem import AllChem
 
-from Complex_Gen.functional import get_center_geo, get_bond_dst, find_ligand_pos, rodrigues_rotation_matrix
+from Complex_Gen.functional import get_center_geo, get_bond_dst, find_ligand_pos, rodrigues_rotation_matrix, \
+    rotate_bidendate_angel, rotate_point_about_vector
 
 
 class Ligand:
@@ -158,7 +159,7 @@ class Complex:
                 theta_rad = np.arccos(cos_theta)
                 angel_factor = np.cos(theta_rad / 2)
 
-                direction = (v1 + v2) / 2
+                direction = [v1, v2]
             elif num_dentate == 1:
                 angel_factor = None
                 direction = center_geo[self._ligands[i]._sites_loc_idx[0]]
@@ -185,17 +186,34 @@ class Complex:
         :param bond_dst: distance between the ligand and the center atom
         :return: ASE Atoms Object, ligand structure with updated positions
         """
+
+
+
         ligand_structure = ligand._structure.copy()
         if ligand.dentate == 1:
             anchor = ligand._anchor
         elif ligand.dentate == 2:
             anchor = np.mean(ligand._anchor, axis=0)
+            v1 = pos[0]
+            v2 = pos[1]
+            pos = (v1 + v2) / 2
+
+        pos = pos / np.linalg.norm(pos)
 
         ligand_pos = ligand._direction
 
         R = rodrigues_rotation_matrix(ligand_pos, pos)
         for atom in ligand_structure:
             atom.position = R @ (atom.position - anchor) + pos * bond_dst
+
+        if ligand.dentate == 2:
+            # rotate the ligand around pos to minimize direction between two binding sites
+            rotate_angel = rotate_bidendate_angel(ligand._anchor[0], ligand._anchor[1], v1, v2, pos)
+
+            # rotate the ligand around pos
+            for atom in ligand_structure:
+                atom.position = rotate_point_about_vector(atom.position, pos, rotate_angel)
+
 
         return ligand_structure
 

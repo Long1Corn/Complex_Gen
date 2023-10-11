@@ -1,6 +1,8 @@
 import numpy as np
 from ase import Atoms
 from ase.data import covalent_radii
+from scipy.optimize import minimize
+from scipy.spatial.transform import Rotation as R
 
 
 def unit_vector(vector: np.ndarray):
@@ -184,7 +186,7 @@ def get_bond_dst(atom1: str, atom2, num_dentate:int, angel_factor=None) -> float
         s21 = Atoms(atom2[0]).numbers[0]
         s22 = Atoms(atom2[1]).numbers[0]
 
-        dst = (covalent_radii[s1] + 0.5*(covalent_radii[s21] + covalent_radii[s22])) * angel_factor * 1.2
+        dst = (covalent_radii[s1] + 0.5*(covalent_radii[s21] + covalent_radii[s22])) * angel_factor * 1.1
 
     return dst
 
@@ -208,3 +210,24 @@ def get_center_geo(geo_type: str) -> np.ndarray:
 
     center_geo = center_geo / np.linalg.norm(center_geo, axis=-1)[:, np.newaxis]
     return center_geo
+
+
+def rotate_point_about_vector(point, axis, angle):
+    """Rotates a point about a given axis by a specified angle."""
+    rotation = R.from_rotvec(axis / np.linalg.norm(axis) * angle)
+    return rotation.apply(point)
+
+def cost_function(angle, x1, x2, v1, v2, v0):
+    """Compute the cost for a given rotation angle."""
+    x1_rot = rotate_point_about_vector(x1, v0, angle)
+    x2_rot = rotate_point_about_vector(x2, v0, angle)
+    distance1 = np.linalg.norm(x1_rot - v1)
+    distance2 = np.linalg.norm(x2_rot - v2)
+    return distance1 + distance2
+
+def rotate_bidendate_angel(x1, x2, v1, v2, v0):
+    result = minimize(lambda angle: cost_function(angle[0], x1, x2, v1, v2, v0), [0])
+
+    optimal_angle = result.x[0]
+
+    return optimal_angle
