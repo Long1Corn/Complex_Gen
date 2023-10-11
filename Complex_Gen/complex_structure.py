@@ -61,10 +61,10 @@ class Ligand:
         else:
             self._anchor = anchor
 
-        # if direction is None:
-        #     self._direction = self._find_ligand_pos()
-        # else:
-        #     self._direction = direction
+        if direction is None:
+            self._direction = self._find_ligand_pos()
+        else:
+            self._direction = direction
 
     def _get_structure_from_smiles(self):
         # Create RDKit molecule from SMILES
@@ -167,9 +167,6 @@ class Complex:
             bond_dst = get_bond_dst(self._center_atom.symbol, self._ligands[i]._binding_sites, num_dentate=num_dentate,
                                     angel_factor=angel_factor)
 
-            # find the ligand direction
-            self._ligands[i]._direction = self._ligands[i]._find_ligand_pos(center_geo_type=self._shape)
-
             ligand_coord = self.place_ligand(self._ligands[i], direction, bond_dst)
             com = com + ligand_coord
 
@@ -186,8 +183,6 @@ class Complex:
         :param bond_dst: distance between the ligand and the center atom
         :return: ASE Atoms Object, ligand structure with updated positions
         """
-
-
 
         ligand_structure = ligand._structure.copy()
         if ligand.dentate == 1:
@@ -208,12 +203,12 @@ class Complex:
 
         if ligand.dentate == 2:
             # rotate the ligand around pos to minimize direction between two binding sites
-            rotate_angel = rotate_bidendate_angel(ligand._anchor[0], ligand._anchor[1], v1, v2, pos)
+            rotate_angel = rotate_bidendate_angel(ligand_structure.positions[ligand._binding_sites_idx[0]],
+                                                  ligand_structure.positions[ligand._binding_sites_idx[1]], v1, v2, pos)
 
             # rotate the ligand around pos
             for atom in ligand_structure:
                 atom.position = rotate_point_about_vector(atom.position, pos, rotate_angel)
-
 
         return ligand_structure
 

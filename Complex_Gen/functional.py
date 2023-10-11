@@ -1,6 +1,9 @@
 import numpy as np
 from ase import Atoms
 from ase.data import covalent_radii
+from matplotlib import pyplot as plt
+from rdkit import Chem
+from rdkit.Chem import AllChem, Draw, rdDepictor
 from scipy.optimize import minimize
 from scipy.spatial.transform import Rotation as R
 
@@ -110,18 +113,26 @@ def find_ligand_pos(structure, anchor, site, sites_loc_idx, center_geo_type=None
 
         ligand_pos = v_normal
 
-    elif len(site) == 2: # bind to bi-dentate
-        geo_vector = get_center_geo(center_geo_type)
+    elif len(site) == 2:  # bind to bi-dentate
+        # geo_vector = get_center_geo(center_geo_type)
 
-        geo_vector = geo_vector[sites_loc_idx]
+        # geo_vector = geo_vector[sites_loc_idx]
 
         # find the vector on plane (v1,v2) and perpendicular to v_a12
         anchor1 = anchor[0]
         anchor2 = anchor[1]
         anchors_center = (anchor1 + anchor2) / 2
 
-        v1 = geo_vector[0]
-        v2 = geo_vector[1]
+        # v1 = geo_vector[0]
+        # v2 = geo_vector[1]
+        near_atoms_idx1 = find_near_atoms(structure, anchor1, 6)
+        near_atoms_idx2 = find_near_atoms(structure, anchor2, 6)
+
+        average_pos1 = np.mean([structure[near_atoms_idx1[x]].position for x in range(5)], axis=0)
+        average_pos2 = np.mean([structure[near_atoms_idx2[x]].position for x in range(5)],axis=0)
+
+        v1 = average_pos1 - anchor1
+        v2 = average_pos2 - anchor2
 
         v_a12 = anchor1 - anchor2
 
@@ -146,7 +157,7 @@ def find_ligand_pos(structure, anchor, site, sites_loc_idx, center_geo_type=None
     return ligand_pos
 
 
-def get_bond_dst(atom1: str, atom2, num_dentate:int, angel_factor=None) -> float:
+def get_bond_dst(atom1: str, atom2, num_dentate: int, angel_factor=None) -> float:
     # todo: implement pi bond and ring
     """
     Get the bond distance between two atoms.
@@ -157,7 +168,7 @@ def get_bond_dst(atom1: str, atom2, num_dentate:int, angel_factor=None) -> float
     :return: bond distance
     """
 
-    if num_dentate == 1 : # mono-dentate
+    if num_dentate == 1:  # mono-dentate
         if atom1 == "=" or atom2 == "=":
             # raise NotImplementedError("Bond distance for pi bond not implemented yet.")
             if atom1 == "=":
@@ -181,12 +192,12 @@ def get_bond_dst(atom1: str, atom2, num_dentate:int, angel_factor=None) -> float
             s2 = Atoms(atom2).numbers[0]
             dst = (covalent_radii[s1] + covalent_radii[s2]) * 1.1
 
-    elif num_dentate == 2: # bi-dentate
+    elif num_dentate == 2:  # bi-dentate
         s1 = Atoms(atom1).numbers[0]
         s21 = Atoms(atom2[0]).numbers[0]
         s22 = Atoms(atom2[1]).numbers[0]
 
-        dst = (covalent_radii[s1] + 0.5*(covalent_radii[s21] + covalent_radii[s22])) * angel_factor * 1.1
+        dst = (covalent_radii[s1] + 0.5 * (covalent_radii[s21] + covalent_radii[s22])) * angel_factor * 1.1
 
     return dst
 
@@ -217,20 +228,32 @@ def rotate_point_about_vector(point, axis, angle):
     rotation = R.from_rotvec(axis / np.linalg.norm(axis) * angle)
     return rotation.apply(point)
 
+
 def cost_function(angle, x1, x2, v1, v2, v0):
     """Compute the cost for a given rotation angle."""
     x1_rot = rotate_point_about_vector(x1, v0, angle)
     x2_rot = rotate_point_about_vector(x2, v0, angle)
-    distance1 = np.linalg.norm(x1_rot - v1)
-    distance2 = np.linalg.norm(x2_rot - v2)
-    return distance1 + distance2
+
+    # get angel between v and x
+    angle1 = np.arccos(np.dot(v1, x1_rot) / (np.linalg.norm(v1) * np.linalg.norm(x1_rot)))
+    angle2 = np.arccos(np.dot(v2, x2_rot) / (np.linalg.norm(v2) * np.linalg.norm(x2_rot)))
+
+    return angle1 + angle2
+
 
 def rotate_bidendate_angel(x1, x2, v1, v2, v0):
-    result = minimize(lambda angle: cost_function(angle[0], x1, x2, v1, v2, v0), [0])
+    starting_points = [0, np.pi / 4, np.pi / 2, 3 * np.pi / 4]
+    results = []
 
-    optimal_angle = result.x[0]
+    for sp in starting_points:
+        res = minimize(lambda angle: cost_function(angle[0], x1, x2, v1, v2, v0), [sp])
+        results.append((res.fun, res.x[0]))
 
-    return optimal_angle
+    # Find the best result
+    best_result = min(results, key=lambda x: x[0])
+    best_cost, best_angle = best_result
+
+    return best_angle
 
 
 def ase_to_xyz(atoms, decimals=8):
@@ -246,3 +269,57 @@ def ase_to_xyz(atoms, decimals=8):
         xyz_string += format_string.format(symbol, position[0], position[1], position[2])
 
     return xyz_string
+
+
+def view_smiles(smiles: str):
+    # Convert SMILES to molecule
+    mol = Chem.MolFromSmiles(smiles)
+
+    # If RDKit was unable to parse the SMILES, return
+    if mol is None:
+        print("Invalid SMILES string:", smiles)
+        return
+
+    # Add hydrogens
+    mol = Chem.AddHs(mol)
+
+    # Compute 2D coordinates for visualization
+    rdDepictor.Compute2DCoords(mol)
+
+    # Get the drawing
+    size = 600
+    img = Draw.MolToImage(mol, size=(size, size), kekulize=True, wedgeBonds=True, bgcolor=None)
+    fig, ax = plt.subplots(figsize=(6, 6))
+    # plt.xlim(0,size)
+    # plt.ylim(0,size)
+    ax.imshow(img)
+    # ax.axis("off")
+
+    # Get molecule conformer
+    conf = mol.GetConformer()
+
+    pos_lst = []
+    symbol= []
+    # Add atom indices
+    for atom in mol.GetAtoms():
+        pos = conf.GetAtomPosition(atom.GetIdx())
+        x, y = pos.x, pos.y
+        pos_lst.append([x, y])
+        symbol.append(atom.GetSymbol())
+
+    x_min = min([x for x, y in pos_lst])
+    x_max = max([x for x, y in pos_lst])
+    y_min = min([y for x, y in pos_lst])
+    y_max = max([y for x, y in pos_lst])
+
+    scale_facor = 0.9 * size/max(x_max-x_min, y_max-y_min)
+
+    for i, atom in enumerate(mol.GetAtoms()):
+
+        # ax.text(x, y, str(atom.GetSymbol()), color="black", fontsize=12, ha='center', va='center')
+        ax.text(pos_lst[i][0]*scale_facor + size/2 + 10, size/2 - pos_lst[i][1]*scale_facor - 10
+                , str(atom.GetIdx()), color="red", fontsize=10, ha='center', va='center')
+
+    plt.show()
+
+
