@@ -59,13 +59,20 @@ def find_mol_center(structure: Atoms) -> np.ndarray:
 
 
 def find_near_atoms(structure: Atoms, anchor: np.ndarray, num: int):
-    # find the index of nearest N atoms to the anchor in a molecule (ase atom)
+    # find the index of nearest N atoms to the anchor in a molecule (ase atom) excluding hydrogen atoms
     dst = []
-    for atom in structure:
-        dst.append(np.linalg.norm(atom.position - anchor))
-    dst = np.array(dst)
-    idx = np.argsort(dst)
-    return idx[:num]
+    for idx, atom in enumerate(structure):
+        # Skip hydrogen atoms
+        if atom.symbol != 'H':
+            dst.append((np.linalg.norm(atom.position - anchor), idx))
+
+    # Sort by distance, but keep the atom index information
+    sorted_dst = sorted(dst, key=lambda x: x[0])
+
+    # Extract atom indices of the closest atoms
+    nearest_atom_indices = [x[1] for x in sorted_dst[:num]]
+
+    return np.array(nearest_atom_indices)
 
 
 def find_ligand_pos(structure, anchor, site, sites_loc_idx, center_geo_type=None) -> np.ndarray:
@@ -114,25 +121,16 @@ def find_ligand_pos(structure, anchor, site, sites_loc_idx, center_geo_type=None
         ligand_pos = v_normal
 
     elif len(site) == 2:  # bind to bi-dentate
-        # geo_vector = get_center_geo(center_geo_type)
-
-        # geo_vector = geo_vector[sites_loc_idx]
-
         # find the vector on plane (v1,v2) and perpendicular to v_a12
         anchor1 = anchor[0]
         anchor2 = anchor[1]
         anchors_center = (anchor1 + anchor2) / 2
 
-        # v1 = geo_vector[0]
-        # v2 = geo_vector[1]
-        near_atoms_idx1 = find_near_atoms(structure, anchor1, 6)
-        near_atoms_idx2 = find_near_atoms(structure, anchor2, 6)
+        near_atoms_idx1 = find_near_atoms(structure, anchor1, 2)
+        near_atoms_idx2 = find_near_atoms(structure, anchor2, 2)
 
-        average_pos1 = np.mean([structure[near_atoms_idx1[x]].position for x in range(5)], axis=0)
-        average_pos2 = np.mean([structure[near_atoms_idx2[x]].position for x in range(5)],axis=0)
-
-        v1 = average_pos1 - anchor1
-        v2 = average_pos2 - anchor2
+        v1 = structure[near_atoms_idx1[1]].position - anchor1
+        v2 = structure[near_atoms_idx2[1]].position - anchor2
 
         v_a12 = anchor1 - anchor2
 

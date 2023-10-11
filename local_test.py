@@ -26,9 +26,9 @@ def PH3():
 
 
 ligand1 = Ligand(structure=H(), binding_sites_idx=[0], sites_loc_idx=[0])
-ligand2 = Ligand(structure=CO(), binding_sites_idx=[0], sites_loc_idx=[1])
-ligand3 = Ligand(smiles="NCCN", binding_sites_idx=[0, 3], sites_loc_idx=[2,3])
-# ligand3 = Ligand(smiles="c1cnc2c(c1)ccc3cccnc23", binding_sites_idx=[2, 12], sites_loc_idx=[1, 3])
+ligand2 = Ligand(structure=CO(), binding_sites_idx=[0], sites_loc_idx=[2])
+# ligand3 = Ligand(smiles="NCCN", binding_sites_idx=[0, 3], sites_loc_idx=[1,3])
+ligand3 = Ligand(smiles="c1cnc2c(c1)ccc3cccnc23", binding_sites_idx=[2, 12], sites_loc_idx=[1, 3])
 # ligand4 = Ligand(structure=PH3(), binding_sites_idx=[0], sites_loc_idx=[3])
 ligand5 = Ligand(structure=PH3(), binding_sites_idx=[0], sites_loc_idx=[4])
 
