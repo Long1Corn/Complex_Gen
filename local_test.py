@@ -3,6 +3,7 @@ from ase import Atom, Atoms
 from ase.visualize import view
 
 from Complex_Gen.complex_structure import Ligand, Complex
+from Complex_Gen.functional import ase_to_xyz
 
 
 def CO():
@@ -35,3 +36,7 @@ com = Complex(center_atom="Rh", ligands=[ligand1, ligand2, ligand3, ligand5], sh
 com.generate_complex()
 
 view(com.complex)
+
+xyz = ase_to_xyz(com.complex)
+
+print(xyz)

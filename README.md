@@ -25,11 +25,14 @@ def CO():
     O1 = Atom('O', (0, 0, 1.2))
     return Atoms([C1, O1])
     
-ligand2 = Ligand(structure=CO(), binding_sites_idx=[0])
+ligand2 = Ligand(structure=CO(), binding_sites_idx=[0], sites_loc_idx=[1])
+ligand3 = Ligand(structure=CO(), binding_sites_idx=[0], sites_loc_idx=[2])
+ligand4 = Ligand(structure=CO(), binding_sites_idx=[0], sites_loc_idx=[3])
+ligand5 = Ligand(structure=CO(), binding_sites_idx=[0], sites_loc_idx=[4])
 
 # Define the complex based on center metal atom and coordination number
-com = Complex(center_atom="Rh", 
-              ligands=[ligand1, ligand2, ligand2, ligand2, ligand2], 
+com = Complex(center_atom="Rh",
+              ligands=[ligand1, ligand2, ligand3, ligand4, ligand5],
               shape="pentagonal_bipyramidal")
 
 com.generate_complex()

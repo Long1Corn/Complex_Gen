@@ -231,3 +231,18 @@ def rotate_bidendate_angel(x1, x2, v1, v2, v0):
     optimal_angle = result.x[0]
 
     return optimal_angle
+
+
+def ase_to_xyz(atoms, decimals=8):
+    """Convert an ASE Atoms object to an XYZ string with specified decimals."""
+    n_atoms = len(atoms)
+    symbols = atoms.get_chemical_symbols()
+    positions = atoms.get_positions()
+
+    xyz_string = str(n_atoms) + '\n\n'  # number of atoms, then a blank comment line
+
+    format_string = "{0} {1:." + str(decimals) + "f} {2:." + str(decimals) + "f} {3:." + str(decimals) + "f}\n"
+    for symbol, position in zip(symbols, positions):
+        xyz_string += format_string.format(symbol, position[0], position[1], position[2])
+
+    return xyz_string
