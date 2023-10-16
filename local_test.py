@@ -30,7 +30,7 @@ ligand2 = Ligand(structure=CO(), binding_sites_idx=[0], sites_loc_idx=[2])
 # ligand3 = Ligand(smiles="NCCN", binding_sites_idx=[0, 3], sites_loc_idx=[1,3])
 ligand3 = Ligand(smiles="c1cnc2c(c1)ccc3cccnc23", binding_sites_idx=[2, 12], sites_loc_idx=[1, 3])
 # ligand4 = Ligand(structure=PH3(), binding_sites_idx=[0], sites_loc_idx=[3])
-ligand5 = Ligand(structure=PH3(), binding_sites_idx=[0], sites_loc_idx=[4])
+ligand5 = Ligand(smiles="P", binding_sites_idx=[0], sites_loc_idx=[4])
 
 shape = "pentagonal_bipyramidal"
 com = Complex(center_atom="Rh", ligands=[ligand1, ligand2, ligand3, ligand5], shape=shape)

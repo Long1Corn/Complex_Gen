@@ -27,11 +27,6 @@ class Ligand:
         self._binding_sites_idx = binding_sites_idx
         self._sites_loc_idx = sites_loc_idx
 
-        if len(sites_loc_idx) == 1:
-            self.dentate = 1
-        elif len(sites_loc_idx) == 2:
-            self.dentate = 2
-
         # get ligand structure (ASE ATOMS) from smiles or structure
         if smiles is not None:
             self._smiles = smiles
@@ -41,6 +36,7 @@ class Ligand:
 
         # get binding sites
         if len(self._sites_loc_idx) == 1:  # mono-dentate
+            self.dentate = 1
             if len(self._binding_sites_idx) == 1:
                 self._binding_sites = self._structure[self._binding_sites_idx[0]].symbol
             elif len(self._binding_sites_idx) == 2:
@@ -49,6 +45,7 @@ class Ligand:
                 self._binding_sites = "ring"
 
         elif len(self._sites_loc_idx) == 2:  # bi-dentate
+            self.dentate = 2
             self._binding_sites = [self._structure[self._binding_sites_idx[0]].symbol,
                                    self._structure[self._binding_sites_idx[1]].symbol]
 
@@ -103,10 +100,9 @@ class Ligand:
 
         return anchor
 
-    def _find_ligand_pos(self, center_geo_type: str = None):
+    def _find_ligand_pos(self):
         """try to find the name of the binding site and the geometric center of the ligand"""
-        ligand_pos = find_ligand_pos(self._structure, self._anchor, self._binding_sites,
-                                     sites_loc_idx=self._sites_loc_idx, center_geo_type=center_geo_type)
+        ligand_pos = find_ligand_pos(self._structure, self._anchor, self._binding_sites, self.dentate)
 
         return ligand_pos
 
@@ -151,7 +147,14 @@ class Complex:
 
         for i in range(len(self._ligands)):
             num_dentate = self._ligands[i].dentate
-            if num_dentate == 2:
+
+            # get angel and direction of the binding site
+
+            if num_dentate == 1:
+                angel_factor = None
+                direction = center_geo[self._ligands[i]._sites_loc_idx[0]]
+
+            elif num_dentate == 2:
                 # get angel between two binding sites
                 v1 = center_geo[self._ligands[i]._sites_loc_idx[0]]
                 v2 = center_geo[self._ligands[i]._sites_loc_idx[1]]
@@ -160,13 +163,12 @@ class Complex:
                 angel_factor = np.cos(theta_rad / 2)
 
                 direction = [v1, v2]
-            elif num_dentate == 1:
-                angel_factor = None
-                direction = center_geo[self._ligands[i]._sites_loc_idx[0]]
 
+            # get bond distance
             bond_dst = get_bond_dst(self._center_atom.symbol, self._ligands[i]._binding_sites, num_dentate=num_dentate,
                                     angel_factor=angel_factor)
 
+            # get ligand position and combine the ligand
             ligand_coord = self.place_ligand(self._ligands[i], direction, bond_dst)
             com = com + ligand_coord
 
@@ -185,8 +187,11 @@ class Complex:
         """
 
         ligand_structure = ligand._structure.copy()
+
+        # get position of anchor and directional vector of the binding sites
         if ligand.dentate == 1:
             anchor = ligand._anchor
+
         elif ligand.dentate == 2:
             anchor = np.mean(ligand._anchor, axis=0)
             v1 = pos[0]
@@ -195,12 +200,15 @@ class Complex:
 
         pos = pos / np.linalg.norm(pos)
 
+        # get ligand original position vector
         ligand_pos = ligand._direction
 
+        # align the original position vector and directional vector by rotating ligand
         R = rodrigues_rotation_matrix(ligand_pos, pos)
         for atom in ligand_structure:
             atom.position = R @ (atom.position - anchor) + pos * bond_dst
 
+        # for bidentate, rotato the ligand around the directional vector to match two binding sites
         if ligand.dentate == 2:
             # rotate the ligand around pos to minimize direction between two binding sites
             rotate_angel = rotate_bidendate_angel(ligand_structure.positions[ligand._binding_sites_idx[0]],

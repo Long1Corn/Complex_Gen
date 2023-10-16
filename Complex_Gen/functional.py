@@ -75,52 +75,42 @@ def find_near_atoms(structure: Atoms, anchor: np.ndarray, num: int):
     return np.array(nearest_atom_indices)
 
 
-def find_ligand_pos(structure, anchor, site, sites_loc_idx, center_geo_type=None) -> np.ndarray:
+def find_ligand_pos(structure, anchor, site, dentate) -> np.ndarray:
     """
     Find the directional vector of a ligand using anchor and the geometric center of the ligand.
     :param structure: ligand structure
     :param anchor: 3d position within the ligand, could be np.ndarray or [np.ndarray]
     :param site: type binding site of the ligand, could be str or [str]
-    :param sites_loc_idx: index of the binding site location, only used for bi-dentate
-    :param center_geo_type: type of geometric center of the ligand, only used for bi-dentate
+    :param dentate:
     :return: 3d directional vector of the ligand
     """
-    if len(structure) == 1:  # ligand is single atom
-        ligand_pos = np.array([0, 0, 1])
+    if dentate == 1:  # mono-dentate
 
-    # elif site == "=":  # bind to pi bond
-    #     near_atoms_idx = find_near_atoms(structure, anchor, 2)
-    #     # find the vector of the pi bond
-    #     v_pi = structure[near_atoms_idx[0]].position - structure[near_atoms_idx[1]].position
-    #
-    #     # find the vector of the ligand
-    #     ligand_center = find_mol_center(structure)
-    #     v_ligand = ligand_center - anchor
-    #
-    #     # find the normal component of the ligand vector subtracted by the pi bond vector
-    #     v_normal = v_ligand - np.dot(v_ligand, v_pi) * v_pi / np.linalg.norm(v_pi) **2
-    #
-    #     ligand_pos = v_normal
+        if len(structure) == 1:  # ligand is single atom
+            ligand_pos = np.array([0, 0, 1])
 
-    elif site == "ring" or site == "=":  # bind to ring
-        # find the plane of the ring or pi bond
-        near_atoms_idx = find_near_atoms(structure, anchor, 3)
+        elif site == "ring" or site == "=":  # bind to ring
+            # find the plane of the ring or pi bond
+            near_atoms_idx = find_near_atoms(structure, anchor, 3)
 
-        v_1 = structure[near_atoms_idx[0]].position - structure[near_atoms_idx[1]].position
-        v_2 = structure[near_atoms_idx[0]].position - structure[near_atoms_idx[2]].position
+            v_1 = structure[near_atoms_idx[0]].position - structure[near_atoms_idx[1]].position
+            v_2 = structure[near_atoms_idx[0]].position - structure[near_atoms_idx[2]].position
 
-        # find the normal vector of the ring plane described by v1, v2
-        v_normal = np.cross(v_1, v_2)
+            # find the normal vector of the ring plane described by v1, v2
+            v_normal = np.cross(v_1, v_2)
 
-        # make v_normal and ligand the same direction
-        ligand_center = find_mol_center(structure)
-        v_ligand = ligand_center - anchor
+            # make v_normal and ligand the same direction
+            ligand_center = find_mol_center(structure)
+            v_ligand = ligand_center - anchor
 
-        v_normal = v_normal * (np.sign(np.dot(v_normal, v_ligand)) + 1e-2)
+            v_normal = v_normal * (np.sign(np.dot(v_normal, v_ligand)) + 1e-2)
 
-        ligand_pos = v_normal
+            ligand_pos = v_normal
+        else:  # bind to one atom site
+            ligand_center = find_mol_center(structure)
+            ligand_pos = ligand_center - anchor
 
-    elif len(site) == 2:  # bind to bi-dentate
+    elif dentate == 2:  # bind to bi-dentate
         # find the vector on plane (v1,v2) and perpendicular to v_a12
         anchor1 = anchor[0]
         anchor2 = anchor[1]
@@ -147,10 +137,6 @@ def find_ligand_pos(structure, anchor, site, sites_loc_idx, center_geo_type=None
         u = u * (np.sign(np.dot(u, v_ligand)) + 1e-2)
 
         ligand_pos = u
-
-    else:  # bind to one atom site
-        ligand_center = find_mol_center(structure)
-        ligand_pos = ligand_center - anchor
 
     return ligand_pos
 
@@ -270,6 +256,7 @@ def ase_to_xyz(atoms, decimals=8):
 
 
 def view_smiles(smiles: str):
+    """Visualize a molecule from a SMILES string for identifying atom indices."""
     # Convert SMILES to molecule
     mol = Chem.MolFromSmiles(smiles)
 
@@ -297,7 +284,7 @@ def view_smiles(smiles: str):
     conf = mol.GetConformer()
 
     pos_lst = []
-    symbol= []
+    symbol = []
     # Add atom indices
     for atom in mol.GetAtoms():
         pos = conf.GetAtomPosition(atom.GetIdx())
@@ -310,14 +297,27 @@ def view_smiles(smiles: str):
     y_min = min([y for x, y in pos_lst])
     y_max = max([y for x, y in pos_lst])
 
-    scale_facor = 0.9 * size/max(x_max-x_min, y_max-y_min)
+    scale_facor = 0.9 * size / max(x_max - x_min, y_max - y_min)
 
     for i, atom in enumerate(mol.GetAtoms()):
-
         # ax.text(x, y, str(atom.GetSymbol()), color="black", fontsize=12, ha='center', va='center')
-        ax.text(pos_lst[i][0]*scale_facor + size/2 + 10, size/2 - pos_lst[i][1]*scale_facor - 10
+        ax.text(pos_lst[i][0] * scale_facor + size / 2 + 10, size / 2 - pos_lst[i][1] * scale_facor - 10
                 , str(atom.GetIdx()), color="red", fontsize=10, ha='center', va='center')
 
     plt.show()
 
 
+def get_atoms_index(smiles:str, atom_type: str):
+    """ given smiles and a atom type, return and index of all atom_type in the smiles"""
+
+    mol = Chem.MolFromSmiles(smiles)
+    mol = Chem.AddHs(mol)
+    atomic_numbers = [atom.GetAtomicNum() for atom in mol.GetAtoms()]
+
+    # get atomic number of atom_type
+    atom_num = Chem.GetPeriodicTable().GetAtomicNumber(atom_type)
+
+    # get index of atom_type
+    atom_index = [i for i, x in enumerate(atomic_numbers) if x == atom_num]
+
+    return atom_index
