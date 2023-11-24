@@ -1,10 +1,12 @@
+import random
+
 import numpy as np
 from ase import Atoms, Atom
 from rdkit import Chem
 from rdkit.Chem import AllChem
 
 from Complex_Gen.functional import get_center_geo, get_bond_dst, find_ligand_pos, rodrigues_rotation_matrix, \
-    rotate_bidendate_angel, rotate_point_about_vector
+    rotate_bidendate_angel, rotate_point_about_vector, check_atoms_distance
 
 
 class Ligand:
@@ -26,13 +28,15 @@ class Ligand:
         self._rdkit_mol = None
         self._binding_sites_idx = binding_sites_idx
         self._sites_loc_idx = sites_loc_idx
+        self._smiles = smiles
+        self._structure = structure
+        self._rdkit_mol = None
+
+    def _gen_conformer(self, attempt: int = 0, max_conformers=10):
 
         # get ligand structure (ASE ATOMS) from smiles or structure
-        if smiles is not None:
-            self._smiles = smiles
-            self._get_structure_from_smiles()
-        elif structure is not None:
-            self._structure = structure
+        if self._smiles is not None:
+            self._get_structure_from_smiles(attempt=attempt, max_conformers=max_conformers)
 
         # get binding sites
         if len(self._sites_loc_idx) == 1:  # mono-dentate
@@ -53,41 +57,38 @@ class Ligand:
             raise ValueError("Only mono-dentate and bi-dentate ligands are supported")
 
         # get anchor and direction
-        if anchor is None:
-            self._anchor = self._find_anchor(self.dentate)
-        else:
-            self._anchor = anchor
 
-        if direction is None:
-            self._direction = self._find_ligand_pos()
-        else:
-            self._direction = direction
+        self._anchor = self._find_anchor(self.dentate)
+        self._direction = self._find_ligand_pos()
 
-    def _get_structure_from_smiles(self):
+
+    def _get_structure_from_smiles(self, attempt:int=0, max_conformers=10):
         # Create RDKit molecule from SMILES
-        mol = Chem.MolFromSmiles(self._smiles)
 
-        # Add hydrogens
-        mol = Chem.AddHs(mol)
-
-        # Generate 3D coordinates
-        AllChem.EmbedMolecule(mol, AllChem.ETKDG())
+        if self._rdkit_mol is None:
+            mol = Chem.MolFromSmiles(self._smiles)
+            # Add hydrogens
+            mol = Chem.AddHs(mol)
+            # Generate 3D coordinates
+            # AllChem.EmbedMolecule(mol, AllChem.ETKDG(), randomSeed=random.randint(0, 10000))
+            AllChem.EmbedMultipleConfs(mol, numConfs=max_conformers, params=AllChem.ETKDG())
+            self._rdkit_mol = mol
 
         # Extract atomic numbers
-        atomic_numbers = [atom.GetAtomicNum() for atom in mol.GetAtoms()]
+        atomic_numbers = [atom.GetAtomicNum() for atom in self._rdkit_mol.GetAtoms()]
 
-        # Get a conformer (assuming only one conformer)
-        conformer = mol.GetConformer()
+        # Get a random conformer
+        conformer = self._rdkit_mol.GetConformer(attempt)
 
         # Extract coordinates
-        coords = [conformer.GetAtomPosition(i) for i in range(mol.GetNumAtoms())]
+        coords = [conformer.GetAtomPosition(i) for i in range(self._rdkit_mol.GetNumAtoms())]
         coords = np.array([[pos.x, pos.y, pos.z] for pos in coords])
 
         # Create an ASE Atoms object
         ase_atoms = Atoms(numbers=atomic_numbers, positions=coords)
 
         self._structure = ase_atoms
-        self._rdkit_mol = mol
+
 
     def _find_anchor(self, dentate: int):
         if dentate == 1:
@@ -130,49 +131,66 @@ class Complex:
         self._ligands = ligands
         self.complex = None
 
-    def generate_complex(self):
+    def generate_complex(self, max_attempt=20, tol_min_dst=0.6):
         """
         Generate the initial complex structure.
         :return: complex structure
         """
 
-        com = Atoms([self._center_atom])
-
         center_geo = get_center_geo(self._shape)
 
-        total_ligand_sites = sum([len(x._sites_loc_idx) for x in self._ligands])
+        com_list = []
+        dst_list = []
 
-        if not len(center_geo) == total_ligand_sites:
-            raise AssertionError(f"Number of ligands ({total_ligand_sites}) does not match the shape ({self._shape})")
+        for attempt in range(max_attempt):
 
-        for i in range(len(self._ligands)):
-            num_dentate = self._ligands[i].dentate
+            com = Atoms([self._center_atom])
 
-            # get angel and direction of the binding site
+            for i in range(len(self._ligands)):
 
-            if num_dentate == 1:
-                angel_factor = None
-                direction = center_geo[self._ligands[i]._sites_loc_idx[0]]
+                self._ligands[i]._gen_conformer(attempt=attempt, max_conformers=max_attempt)
 
-            elif num_dentate == 2:
-                # get angel between two binding sites
-                v1 = center_geo[self._ligands[i]._sites_loc_idx[0]]
-                v2 = center_geo[self._ligands[i]._sites_loc_idx[1]]
-                cos_theta = np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2) + 1e-2)
-                theta_rad = np.arccos(cos_theta)
-                angel_factor = np.cos(theta_rad / 2)
+                num_dentate = self._ligands[i].dentate
 
-                direction = [v1, v2]
+                # get angel and direction of the binding site
+                if num_dentate == 1:
+                    angel_factor = None
+                    direction = center_geo[self._ligands[i]._sites_loc_idx[0]]
 
-            # get bond distance
-            bond_dst = get_bond_dst(self._center_atom.symbol, self._ligands[i]._binding_sites, num_dentate=num_dentate,
-                                    angel_factor=angel_factor)
+                elif num_dentate == 2:
+                    # get angel between two binding sites
+                    v1 = center_geo[self._ligands[i]._sites_loc_idx[0]]
+                    v2 = center_geo[self._ligands[i]._sites_loc_idx[1]]
+                    cos_theta = np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2) + 1e-2)
+                    theta_rad = np.arccos(cos_theta)
+                    angel_factor = np.cos(theta_rad / 2)
 
-            # get ligand position and combine the ligand
-            ligand_coord = self.place_ligand(self._ligands[i], direction, bond_dst)
-            com = com + ligand_coord
+                    direction = [v1, v2]
 
-        self.complex = com
+                # get bond distance
+                bond_dst = get_bond_dst(self._center_atom.symbol, self._ligands[i]._binding_sites, num_dentate=num_dentate,
+                                        angel_factor=angel_factor)
+
+                # get ligand position and combine the ligand
+                ligand_coord = self.place_ligand(self._ligands[i], direction, bond_dst)
+                com = com + ligand_coord
+
+            # check if the ligands are too close to each other
+            min_dst = check_atoms_distance(com)
+
+            com_list.append(com)
+            dst_list.append(min_dst)
+
+        # get the min_dst and idx
+        min_dst = max(dst_list)
+        idx = dst_list.index(min_dst)
+
+        if min_dst > tol_min_dst:
+
+            self.complex = com_list[idx]
+        else:
+            self.complex = None
+            raise AssertionError(f"Failed to generate complex after {max_attempt} attempts")
 
         return self.complex
 
@@ -222,3 +240,4 @@ class Complex:
 
     def __repr__(self):
         return f"Complex:{self._center_atom.symbol}{self._ligands}"
+

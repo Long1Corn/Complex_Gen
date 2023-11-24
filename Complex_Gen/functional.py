@@ -1,5 +1,6 @@
 import numpy as np
 from ase import Atoms
+
 from ase.data import covalent_radii
 from matplotlib import pyplot as plt
 from rdkit import Chem
@@ -161,7 +162,7 @@ def get_bond_dst(atom1: str, atom2, num_dentate: int, angel_factor=None) -> floa
                 atom = atom1
 
             s1 = Atoms(atom).numbers[0]
-            dst = covalent_radii[s1] + 0.7  # assuming bond length of pi site is 0.6 A
+            dst = covalent_radii[s1] + 0.6  # assuming bond length of pi site is 0.6 A
 
         elif atom1 == "ring" or atom2 == "ring":
             if atom1 == "ring":
@@ -174,14 +175,14 @@ def get_bond_dst(atom1: str, atom2, num_dentate: int, angel_factor=None) -> floa
         else:
             s1 = Atoms(atom1).numbers[0]
             s2 = Atoms(atom2).numbers[0]
-            dst = (covalent_radii[s1] + covalent_radii[s2]) * 1.1
+            dst = (covalent_radii[s1] + covalent_radii[s2]) * 1.0
 
     elif num_dentate == 2:  # bi-dentate
         s1 = Atoms(atom1).numbers[0]
         s21 = Atoms(atom2[0]).numbers[0]
         s22 = Atoms(atom2[1]).numbers[0]
 
-        dst = (covalent_radii[s1] + 0.5 * (covalent_radii[s21] + covalent_radii[s22])) * angel_factor * 1.1
+        dst = (covalent_radii[s1] + 0.5 * (covalent_radii[s21] + covalent_radii[s22])) * angel_factor * 1.0
 
     return dst
 
@@ -307,7 +308,7 @@ def view_smiles(smiles: str):
     plt.show()
 
 
-def get_atoms_index(smiles:str, atom_type: str):
+def get_atoms_index(smiles: str, atom_type: str):
     """ given smiles and a atom type, return and index of all atom_type in the smiles"""
 
     mol = Chem.MolFromSmiles(smiles)
@@ -321,3 +322,36 @@ def get_atoms_index(smiles:str, atom_type: str):
     atom_index = [i for i, x in enumerate(atomic_numbers) if x == atom_num]
 
     return atom_index
+
+
+def xtb_opt(structure: Atoms, fmax: float = 0.05, max_step: int = 200, fix_idx: list = None) -> Atoms:
+    from ase.constraints import FixAtoms
+    from ase.calculators.xtb import XTB
+    from ase.optimize import BFGS
+    # Define which atoms to fix. For example, fixing the first and second atoms:
+    if fix_idx is not None:
+        constraint = FixAtoms(indices=fix_idx)
+        structure.set_constraint(constraint)
+
+    # Setting up the calculator
+    calculator = XTB(method="GFN2-xTB")  # Choose your method
+    structure.set_calculator(calculator)
+
+    # Optimization
+    optimizer = BFGS(structure)
+    optimizer.run(fmax=fmax, steps=max_step)
+
+    return structure
+
+
+def check_atoms_distance(structure: Atoms) -> float:
+    # check if any two atoms in the structure is too close
+    pos = structure.get_positions()
+
+    # calculate distance matrix
+    dst = np.linalg.norm(pos[:, np.newaxis, :] - pos[np.newaxis, :, :], axis=-1)
+
+    min_dst = np.min(dst[np.triu_indices(len(dst), k=1)])
+
+    return min_dst
+
