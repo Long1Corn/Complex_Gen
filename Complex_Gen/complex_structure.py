@@ -32,11 +32,11 @@ class Ligand:
         self._structure = structure
         self._rdkit_mol = None
 
-    def _gen_conformer(self, attempt: int = 0, max_conformers=10):
+    def _gen_conformer(self, max_conformers=20):
 
         # get ligand structure (ASE ATOMS) from smiles or structure
         if self._smiles is not None:
-            self._get_structure_from_smiles(attempt=attempt, max_conformers=max_conformers)
+            self._get_structure_from_smiles(max_conformers=max_conformers)
 
         # get binding sites
         if len(self._sites_loc_idx) == 1:  # mono-dentate
@@ -62,7 +62,7 @@ class Ligand:
         self._direction = self._find_ligand_pos()
 
 
-    def _get_structure_from_smiles(self, attempt:int=0, max_conformers=10):
+    def _get_structure_from_smiles(self, max_conformers=10):
         # Create RDKit molecule from SMILES
 
         if self._rdkit_mol is None:
@@ -78,7 +78,7 @@ class Ligand:
         atomic_numbers = [atom.GetAtomicNum() for atom in self._rdkit_mol.GetAtoms()]
 
         # Get a random conformer
-        conformer = self._rdkit_mol.GetConformer(attempt)
+        conformer = self._rdkit_mol.GetConformer(random.randint(0, max_conformers - 1))
 
         # Extract coordinates
         coords = [conformer.GetAtomPosition(i) for i in range(self._rdkit_mol.GetNumAtoms())]
@@ -115,6 +115,7 @@ class Ligand:
         return f"Ligand({self.formula})"
 
 
+
 class Complex:
     """
     A class to represent a complex structure.
@@ -131,7 +132,7 @@ class Complex:
         self._ligands = ligands
         self.complex = None
 
-    def generate_complex(self, max_attempt=20, tol_min_dst=0.6):
+    def generate_complex(self, max_attempt=30, tol_min_dst=0.6):
         """
         Generate the initial complex structure.
         :return: complex structure
@@ -148,7 +149,7 @@ class Complex:
 
             for i in range(len(self._ligands)):
 
-                self._ligands[i]._gen_conformer(attempt=attempt, max_conformers=max_attempt)
+                self._ligands[i]._gen_conformer(max_conformers=max_attempt)
 
                 num_dentate = self._ligands[i].dentate
 
