@@ -348,16 +348,30 @@ def xtb_opt(structure: Atoms, fmax: float = 0.05, max_step: int = 200, fix_idx: 
     return structure
 
 
-def check_atoms_distance(structure: Atoms) -> (float, float):
-    # check if any two atoms in the structure is too close
-    pos = structure.get_positions()
+def check_atoms_distance(structure: Atoms, ligand_list:[Atoms]) -> (float, float):
 
-    # calculate distance matrix
-    dst = np.linalg.norm(pos[:, np.newaxis, :] - pos[np.newaxis, :, :], axis=-1)
+    def min_distance_between_two_group_of_points(points1, points2):
+        """Calculate the minimum distance between two groups of points."""
+        min_distance = 1E10
+        for p1 in points1:
+            for p2 in points2:
+                distance = np.linalg.norm(p1 - p2)
+                if distance < min_distance:
+                    min_distance = distance
+        return min_distance
 
-    min_dst = np.min(dst[np.triu_indices(len(dst), k=1)])
+    # check if any two ligands in the structure is too close
+    ligand_pos_list = [ligand.get_positions() for ligand in ligand_list]
+
+    min_dst = 1E10
+    for i in range(len(ligand_list)):
+        for j in range(i + 1, len(ligand_list)):
+            dst = min_distance_between_two_group_of_points(ligand_pos_list[i], ligand_pos_list[j])
+            if dst < min_dst:
+                min_dst = dst
 
     # check min distance between atoms and center (0,0,0)
+    pos = structure.get_positions()
     center = np.array([0, 0, 0])
     dst_center = np.linalg.norm(pos - center, axis=-1)
     # remove center atom, which has zero distance
@@ -365,3 +379,4 @@ def check_atoms_distance(structure: Atoms) -> (float, float):
     min_dst_center = np.min(dst_center)
 
     return min_dst, min_dst_center
+

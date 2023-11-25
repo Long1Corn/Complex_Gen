@@ -141,7 +141,7 @@ class Complex:
         self._ligands = ligands
         self.complex = None
 
-    def generate_complex(self, max_attempt=100, tol_min_dst=0.6):
+    def generate_complex(self, max_attempt=100, tol_min_dst=0.5):
         """
         Generate the initial complex structure.
         :param max_attempt: maximum number of attempts to generate the complex, also control number of conformers
@@ -158,6 +158,7 @@ class Complex:
 
             com = Atoms([self._center_atom])
             bond_dst_list = []
+            ligand_coord_list = []
 
             for i in range(len(self._ligands)):
 
@@ -187,9 +188,10 @@ class Complex:
                 # get ligand position and combine the ligand
                 ligand_coord = self.place_ligand(self._ligands[i], direction, bond_dst * angel_factor)
                 com = com + ligand_coord
+                ligand_coord_list.append(ligand_coord)
 
             # check if the ligands are too close to each other
-            min_dst, min_dst_center = check_atoms_distance(com)
+            min_dst, min_dst_center = check_atoms_distance(com, ligand_coord_list)
             if min_dst_center > min(bond_dst_list) - 1e-3:
                 com_list.append(com)
                 dst_list.append(min_dst)
@@ -198,12 +200,12 @@ class Complex:
             self.complex = None
             print(f"Failed to generate complex after {max_attempt} attempts")
 
-        # get the min_dst and idx
-        min_dst = max(dst_list)
-        idx = dst_list.index(min_dst)
+        # get the max min_dst and idx
+        max_min_dst = max(dst_list)
+        idx = dst_list.index(max_min_dst)
 
         #todo: there should be a better way to handle this
-        if min_dst > tol_min_dst:
+        if max_min_dst > tol_min_dst:
 
             self.complex = com_list[idx]
         else:
@@ -259,4 +261,5 @@ class Complex:
 
     def __repr__(self):
         return f"Complex:{self._center_atom.symbol}{self._ligands}"
+
 
