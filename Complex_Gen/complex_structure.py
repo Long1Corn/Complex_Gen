@@ -194,7 +194,6 @@ class Complex:
                 com_list.append(com)
                 dst_list.append(min_dst)
 
-
         # get the min_dst and idx
         min_dst = max(dst_list)
         idx = dst_list.index(min_dst)
@@ -205,7 +204,7 @@ class Complex:
             self.complex = com_list[idx]
         else:
             self.complex = None
-            raise AssertionError(f"Failed to generate complex after {max_attempt} attempts")
+            print(f"Failed to generate complex after {max_attempt} attempts")
 
         return self.complex
 

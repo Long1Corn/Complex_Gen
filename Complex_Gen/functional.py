@@ -162,7 +162,7 @@ def get_bond_dst(atom1: str, atom2, num_dentate: int) -> float:
                 atom = atom1
 
             s1 = Atoms(atom).numbers[0]
-            dst = covalent_radii[s1] + 0.7  # assuming bond length of pi site is 0.7 A
+            dst = covalent_radii[s1] + 0.6  # assuming bond length of pi site is 0.5 A
 
         elif atom1 == "ring" or atom2 == "ring":
             if atom1 == "ring":
@@ -171,7 +171,7 @@ def get_bond_dst(atom1: str, atom2, num_dentate: int) -> float:
                 atom = atom1
 
             s1 = Atoms(atom).numbers[0]
-            dst = covalent_radii[s1] + 0.7 # assuming bond length of pi site is 0.6 A
+            dst = covalent_radii[s1] + 0.5 # assuming bond length of pi site is 0.5 A
         else:
             s1 = Atoms(atom1).numbers[0]
             s2 = Atoms(atom2).numbers[0]
