@@ -320,7 +320,7 @@ def get_atoms_index(smiles: str, atom_type: str):
     atom_num = Chem.GetPeriodicTable().GetAtomicNumber(atom_type)
 
     # get index of atom_type
-    atom_index = [i for i, x in enumerate(atomic_numbers) if x == atom_num]
+    atom_index = [[i] for i, x in enumerate(atomic_numbers) if x == atom_num]
 
     if len(atom_index) == 0:
         raise ValueError(f"Atom type {atom_type} not found in smiles {smiles}")
