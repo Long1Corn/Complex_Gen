@@ -142,7 +142,7 @@ def find_ligand_pos(structure, anchor, site, dentate) -> np.ndarray:
     return ligand_pos
 
 
-def get_bond_dst(atom1: str, atom2, num_dentate: int, angel_factor=None) -> float:
+def get_bond_dst(atom1: str, atom2, num_dentate: int) -> float:
     # todo: is there a better way to get bond distance?
     """
     Get the bond distance between two atoms.
@@ -162,7 +162,7 @@ def get_bond_dst(atom1: str, atom2, num_dentate: int, angel_factor=None) -> floa
                 atom = atom1
 
             s1 = Atoms(atom).numbers[0]
-            dst = covalent_radii[s1] + 0.6  # assuming bond length of pi site is 0.6 A
+            dst = covalent_radii[s1] + 0.7  # assuming bond length of pi site is 0.7 A
 
         elif atom1 == "ring" or atom2 == "ring":
             if atom1 == "ring":
@@ -171,7 +171,7 @@ def get_bond_dst(atom1: str, atom2, num_dentate: int, angel_factor=None) -> floa
                 atom = atom1
 
             s1 = Atoms(atom).numbers[0]
-            dst = covalent_radii[s1] + 0.6  # assuming bond length of pi site is 0.5 A
+            dst = covalent_radii[s1] + 0.7 # assuming bond length of pi site is 0.6 A
         else:
             s1 = Atoms(atom1).numbers[0]
             s2 = Atoms(atom2).numbers[0]
@@ -182,7 +182,7 @@ def get_bond_dst(atom1: str, atom2, num_dentate: int, angel_factor=None) -> floa
         s21 = Atoms(atom2[0]).numbers[0]
         s22 = Atoms(atom2[1]).numbers[0]
 
-        dst = (covalent_radii[s1] + 0.5 * (covalent_radii[s21] + covalent_radii[s22])) * angel_factor * 1.0
+        dst = (covalent_radii[s1] + 0.5 * (covalent_radii[s21] + covalent_radii[s22])) * 1.0
 
     return dst
 
@@ -348,7 +348,7 @@ def xtb_opt(structure: Atoms, fmax: float = 0.05, max_step: int = 200, fix_idx: 
     return structure
 
 
-def check_atoms_distance(structure: Atoms) -> float:
+def check_atoms_distance(structure: Atoms) -> (float, float):
     # check if any two atoms in the structure is too close
     pos = structure.get_positions()
 
@@ -357,4 +357,11 @@ def check_atoms_distance(structure: Atoms) -> float:
 
     min_dst = np.min(dst[np.triu_indices(len(dst), k=1)])
 
-    return min_dst
+    # check min distance between atoms and center (0,0,0)
+    center = np.array([0, 0, 0])
+    dst_center = np.linalg.norm(pos - center, axis=-1)
+    # remove center atom, which has zero distance
+    dst_center = dst_center[dst_center > 1e-3]
+    min_dst_center = np.min(dst_center)
+
+    return min_dst, min_dst_center

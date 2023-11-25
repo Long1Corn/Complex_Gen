@@ -3,7 +3,7 @@ from ase import Atom, Atoms
 from ase.visualize import view
 
 from Complex_Gen.complex_structure import Ligand, Complex
-from Complex_Gen.functional import ase_to_xyz
+from Complex_Gen.functional import ase_to_xyz, get_atoms_index
 
 
 def CO():
@@ -25,19 +25,22 @@ def PH3():
     return Atoms([P1, H1, H2, H3])
 
 
+binding_sites_idx = get_atoms_index(smiles="CC1(OC(=C(O1)CP(C2=CC=CC=C2)C3=CC=CC=C3)CP(C4=CC=CC=C4)C5=CC=CC=C5)C", atom_type="P")
+
 ligand1 = Ligand(structure=H(), binding_sites_idx=[[0]], sites_loc_idx=[0])
 ligand2 = Ligand(structure=CO(), binding_sites_idx=[[0]], sites_loc_idx=[1])
-ligand3 = Ligand(smiles="C1=CC=C(C3=C1C(C2=CC=CC(=C2O3)P5C4=C(C=CC=C4)OC6=CC=CC=C56)(C)C)P8C7=CC=CC=C7OC9=CC=CC=C89",
-                 binding_sites_idx=[[14], [30]], sites_loc_idx=[2, 3])
+ligand3 = Ligand(smiles="CC1(OC(=C(O1)CP(C2=CC=CC=C2)C3=CC=CC=C3)CP(C4=CC=CC=C4)C5=CC=CC=C5)C",
+                 binding_sites_idx=binding_sites_idx, sites_loc_idx=[2, 3])
 # ligand3 = Ligand(smiles="c1cnc2c(c1)ccc3cccnc23", binding_sites_idx=[2, 12], sites_loc_idx=[1, 3])
 # ligand4 = Ligand(structure=PH3(), binding_sites_idx=[0], sites_loc_idx=[3])
 # ligand3 = Ligand(smiles=None, binding_sites_idx=[0], sites_loc_idx=[1])
 # ligand4= Ligand(smiles="P", binding_sites_idx=[0], sites_loc_idx=[3])
-ligand5 = Ligand(structure=CO(), binding_sites_idx=[[0]], sites_loc_idx=[4])
+# ligand5 = Ligand(structure=CO(), binding_sites_idx=[[0]], sites_loc_idx=[4])
+ligand5 = Ligand(smiles="CC(=O)OC=C", binding_sites_idx=[[4],[5]], sites_loc_idx=[4])
 
 shape = "pentagonal_bipyramidal"
 com = Complex(center_atom="Rh", ligands=[ligand1, ligand2, ligand3, ligand5], shape=shape)
-com.generate_complex()
+com.generate_complex(max_attempt=200)
 
 view(com.complex)
 

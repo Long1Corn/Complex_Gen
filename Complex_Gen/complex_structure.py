@@ -153,9 +153,11 @@ class Complex:
         com_list = []
         dst_list = []
 
+
         for attempt in range(max_attempt):
 
             com = Atoms([self._center_atom])
+            bond_dst_list = []
 
             for i in range(len(self._ligands)):
 
@@ -165,7 +167,7 @@ class Complex:
 
                 # get angel and direction of the binding site
                 if num_dentate == 1:
-                    angel_factor = None
+                    angel_factor = 1.0
                     direction = center_geo[self._ligands[i]._sites_loc_idx[0]]
 
                 elif num_dentate == 2:
@@ -179,18 +181,19 @@ class Complex:
                     direction = [v1, v2]
 
                 # get bond distance
-                bond_dst = get_bond_dst(self._center_atom.symbol, self._ligands[i]._binding_sites, num_dentate=num_dentate,
-                                        angel_factor=angel_factor)
+                bond_dst = get_bond_dst(self._center_atom.symbol, self._ligands[i]._binding_sites, num_dentate=num_dentate,)
+                bond_dst_list.append(bond_dst)
 
                 # get ligand position and combine the ligand
-                ligand_coord = self.place_ligand(self._ligands[i], direction, bond_dst)
+                ligand_coord = self.place_ligand(self._ligands[i], direction, bond_dst * angel_factor)
                 com = com + ligand_coord
 
             # check if the ligands are too close to each other
-            min_dst = check_atoms_distance(com)
+            min_dst, min_dst_center = check_atoms_distance(com)
+            if min_dst_center > min(bond_dst_list) - 1e-3:
+                com_list.append(com)
+                dst_list.append(min_dst)
 
-            com_list.append(com)
-            dst_list.append(min_dst)
 
         # get the min_dst and idx
         min_dst = max(dst_list)
