@@ -41,9 +41,9 @@ class Ligand:
         # get binding sites
         if len(self._sites_loc_idx) == 1:  # mono-dentate
             self.dentate = 1
-            if len(self._binding_sites_idx) == 1:
+            if len(self._binding_sites_idx[0]) == 1:
                 self._binding_sites = self._structure[self._binding_sites_idx[0][0]].symbol
-            elif len(self._binding_sites_idx) == 2:
+            elif len(self._binding_sites_idx[0]) >= 2:
                 self._binding_sites = "="
 
         elif len(self._sites_loc_idx) == 2:  # bi-dentate
@@ -193,6 +193,10 @@ class Complex:
             if min_dst_center > min(bond_dst_list) - 1e-3:
                 com_list.append(com)
                 dst_list.append(min_dst)
+
+        if len(com_list) == 0:
+            self.complex = None
+            print(f"Failed to generate complex after {max_attempt} attempts")
 
         # get the min_dst and idx
         min_dst = max(dst_list)
