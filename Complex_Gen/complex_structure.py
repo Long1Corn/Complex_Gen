@@ -14,7 +14,7 @@ class Ligand:
     A class to represent a ligand.
     """
 
-    def __init__(self, binding_sites_idx: [int], sites_loc_idx: [int], smiles: str = None, structure: Atoms = None,
+    def __init__(self, binding_sites_idx: [[int]], sites_loc_idx: [int], smiles: str = None, structure: Atoms = None,
                  anchor: np.ndarray = None, direction: np.ndarray = None):
         """
         :param smiles: SMILES string of the ligand
@@ -42,16 +42,24 @@ class Ligand:
         if len(self._sites_loc_idx) == 1:  # mono-dentate
             self.dentate = 1
             if len(self._binding_sites_idx) == 1:
-                self._binding_sites = self._structure[self._binding_sites_idx[0]].symbol
+                self._binding_sites = self._structure[self._binding_sites_idx[0][0]].symbol
             elif len(self._binding_sites_idx) == 2:
                 self._binding_sites = "="
-            else:
-                self._binding_sites = "ring"
 
         elif len(self._sites_loc_idx) == 2:  # bi-dentate
+            # todo: add support for pi bonding sites for bi-dentate ligands
             self.dentate = 2
-            self._binding_sites = [self._structure[self._binding_sites_idx[0]].symbol,
-                                   self._structure[self._binding_sites_idx[1]].symbol]
+            self._binding_sites = []
+
+            if len(self._binding_sites_idx[0]) == 1:
+                self._binding_sites.append(self._structure[self._binding_sites_idx[0][0]].symbol)
+            else:
+                self._binding_sites.append("=")
+
+            if len(self._binding_sites_idx[1]) == 1:
+                self._binding_sites.append(self._structure[self._binding_sites_idx[1][0]].symbol)
+            else:
+                self._binding_sites.append("=")
 
         else:
             raise ValueError("Only mono-dentate and bi-dentate ligands are supported")
@@ -62,7 +70,7 @@ class Ligand:
         self._direction = self._find_ligand_pos()
 
 
-    def _get_structure_from_smiles(self, max_conformers=10):
+    def _get_structure_from_smiles(self, max_conformers=20):
         # Create RDKit molecule from SMILES
 
         if self._rdkit_mol is None:
@@ -90,14 +98,15 @@ class Ligand:
         self._structure = ase_atoms
 
 
-    def _find_anchor(self, dentate: int):
+    def _find_anchor(self, dentate: int)-> np.ndarray:
         if dentate == 1:
             # find the binding site to be the geometric center of all binding atoms
-            anchor = np.mean(self._structure.get_positions()[self._binding_sites_idx], axis=0)
+            anchor = np.mean(self._structure.get_positions()[self._binding_sites_idx[0]], axis=0)
 
         elif dentate == 2:
-            # find the bindsite to be the locations of each binding atom
-            anchor = self._structure.get_positions()[self._binding_sites_idx]
+            # find the bindsite to be the locations of each binding sites
+            anchor = np.array([np.mean(self._structure.get_positions()[binding_sites_idx], axis=0)
+                      for binding_sites_idx in self._binding_sites_idx])
 
         return anchor
 
@@ -132,9 +141,10 @@ class Complex:
         self._ligands = ligands
         self.complex = None
 
-    def generate_complex(self, max_attempt=30, tol_min_dst=0.6):
+    def generate_complex(self, max_attempt=100, tol_min_dst=0.6):
         """
         Generate the initial complex structure.
+        :param max_attempt: maximum number of attempts to generate the complex, also control number of conformers
         :return: complex structure
         """
 
@@ -186,6 +196,7 @@ class Complex:
         min_dst = max(dst_list)
         idx = dst_list.index(min_dst)
 
+        #todo: there should be a better way to handle this
         if min_dst > tol_min_dst:
 
             self.complex = com_list[idx]
@@ -230,8 +241,9 @@ class Complex:
         # for bidentate, rotato the ligand around the directional vector to match two binding sites
         if ligand.dentate == 2:
             # rotate the ligand around pos to minimize direction between two binding sites
-            rotate_angel = rotate_bidendate_angel(ligand_structure.positions[ligand._binding_sites_idx[0]],
-                                                  ligand_structure.positions[ligand._binding_sites_idx[1]], v1, v2, pos)
+            rotate_angel = rotate_bidendate_angel(np.mean(ligand_structure.positions[ligand._binding_sites_idx[0]], axis=0),
+                                                  np.mean(ligand_structure.positions[ligand._binding_sites_idx[1]], axis=0),
+                                                    v1, v2, pos)
 
             # rotate the ligand around pos
             for atom in ligand_structure:

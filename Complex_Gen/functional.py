@@ -143,7 +143,7 @@ def find_ligand_pos(structure, anchor, site, dentate) -> np.ndarray:
 
 
 def get_bond_dst(atom1: str, atom2, num_dentate: int, angel_factor=None) -> float:
-    # todo: implement pi bond and ring
+    # todo: is there a better way to get bond distance?
     """
     Get the bond distance between two atoms.
     set to be 1.1 times of the sum of covalent radii of the two atoms.
@@ -188,17 +188,18 @@ def get_bond_dst(atom1: str, atom2, num_dentate: int, angel_factor=None) -> floa
 
 
 def get_center_geo(geo_type: str) -> np.ndarray:
-    geo_type_dict = {"pentagonal_bipyramidal": [[0, 0, 1],
-                                                [0, 0, -1],
-                                                [1, 0, 0],
-                                                [-0.5, 0.5 * 3 ** 0.5, 0],
-                                                [-0.5, -0.5 * 3 ** 0.5, 0]],
-                     "octahedral": [[0, 0, 1],
-                                    [0, 0, -1],
-                                    [1, 0, 0],
-                                    [0, 1, 0],
-                                    [-1, 0, 0],
-                                    [0, -1, 0]], }
+    geo_type_dict = {"pentagonal_bipyramidal": [[0, 0, 1],  # up
+                                                [0, 0, -1],  # down
+                                                [1, 0, 0],  # plane 1
+                                                [-0.5, 0.5 * 3 ** 0.5, 0],  # plane 2
+                                                [-0.5, -0.5 * 3 ** 0.5, 0]],  # plane 3
+                     "octahedral": [[0, 0, 1],  # up
+                                    [0, 0, -1],  # down
+                                    [1, 0, 0],  # plane right
+                                    [0, 1, 0],  # plane front
+                                    [-1, 0, 0],  # plane left
+                                    [0, -1, 0]],  # plane back
+                     }
     if geo_type not in geo_type_dict.keys():
         raise ValueError(f"Geometry type {geo_type} not found in geo_type_dict")
     else:
@@ -321,6 +322,9 @@ def get_atoms_index(smiles: str, atom_type: str):
     # get index of atom_type
     atom_index = [i for i, x in enumerate(atomic_numbers) if x == atom_num]
 
+    if len(atom_index) == 0:
+        raise ValueError(f"Atom type {atom_type} not found in smiles {smiles}")
+
     return atom_index
 
 
@@ -354,4 +358,3 @@ def check_atoms_distance(structure: Atoms) -> float:
     min_dst = np.min(dst[np.triu_indices(len(dst), k=1)])
 
     return min_dst
-
