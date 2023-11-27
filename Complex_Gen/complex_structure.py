@@ -212,8 +212,6 @@ class Complex:
         max_min_dst = max(dst_list)
         idx = dst_list.index(max_min_dst)
 
-        print(f"max_min_dst: {max_min_dst}")
-
         #todo: there should be a better way to handle this
         if max_min_dst > tol_min_dst:
 
