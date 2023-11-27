@@ -117,11 +117,20 @@ def find_ligand_pos(structure, anchor, site, dentate) -> np.ndarray:
         anchor2 = anchor[1]
         anchors_center = (anchor1 + anchor2) / 2
 
-        near_atoms_idx1 = find_near_atoms(structure, anchor1, 2)
-        near_atoms_idx2 = find_near_atoms(structure, anchor2, 2)
+        # 50% using plane, 50% using ligand center
 
-        v1 = structure[near_atoms_idx1[1]].position - anchor1
-        v2 = structure[near_atoms_idx2[1]].position - anchor2
+        rand_num = np.random.rand()
+
+        if rand_num > 0.5:
+            near_atoms_idx1 = find_near_atoms(structure, anchor1, 2)
+            near_atoms_idx2 = find_near_atoms(structure, anchor2, 2)
+
+            v1 = structure[near_atoms_idx1[1]].position - anchor1
+            v2 = structure[near_atoms_idx2[1]].position - anchor2
+        else:
+            ligand_center = find_mol_center(structure)
+            v1 = ligand_center - anchor1
+            v2 = ligand_center - anchor2
 
         v_a12 = anchor1 - anchor2
 

@@ -32,7 +32,7 @@ class Ligand:
         self._structure = structure
         self._rdkit_mol = None
 
-    def _gen_conformer(self, max_conformers=20):
+    def _gen_conformer(self, max_conformers=200):
 
         # get ligand structure (ASE ATOMS) from smiles or structure
         if self._smiles is not None:
@@ -70,7 +70,7 @@ class Ligand:
         self._direction = self._find_ligand_pos()
 
 
-    def _get_structure_from_smiles(self, max_conformers=20):
+    def _get_structure_from_smiles(self, max_conformers=200, mirror=False):
         # Create RDKit molecule from SMILES
 
         if self._rdkit_mol is None:
@@ -94,6 +94,14 @@ class Ligand:
 
         # Create an ASE Atoms object
         ase_atoms = Atoms(numbers=atomic_numbers, positions=coords)
+
+        if mirror:
+            # 50% chance to mirror the ligand
+            if random.random() > 0.5:
+                ase_atoms.positions[:, 0] = -ase_atoms.positions[:, 0]
+        #
+        # randomly rotate the ligand
+        ase_atoms.rotate(random.random() * 360, 'z')
 
         self._structure = ase_atoms
 
@@ -141,7 +149,7 @@ class Complex:
         self._ligands = ligands
         self.complex = None
 
-    def generate_complex(self, max_attempt=100, tol_min_dst=0.5):
+    def generate_complex(self, max_attempt=200, tol_min_dst=1.0):
         """
         Generate the initial complex structure.
         :param max_attempt: maximum number of attempts to generate the complex, also control number of conformers
@@ -162,7 +170,7 @@ class Complex:
 
             for i in range(len(self._ligands)):
 
-                self._ligands[i]._gen_conformer(max_conformers=max_attempt)
+                self._ligands[i]._gen_conformer()
 
                 num_dentate = self._ligands[i].dentate
 
@@ -203,6 +211,8 @@ class Complex:
         # get the max min_dst and idx
         max_min_dst = max(dst_list)
         idx = dst_list.index(max_min_dst)
+
+        print(f"max_min_dst: {max_min_dst}")
 
         #todo: there should be a better way to handle this
         if max_min_dst > tol_min_dst:
