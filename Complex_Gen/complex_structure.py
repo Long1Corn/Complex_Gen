@@ -6,7 +6,7 @@ from rdkit import Chem
 from rdkit.Chem import AllChem
 
 from Complex_Gen.functional import get_bond_dst, find_ligand_pos, rodrigues_rotation_matrix, \
-    rotate_bidendate_angel, rotate_point_about_vector, check_atoms_distance
+    rotate_bidendate_angel, rotate_point_about_vector, check_atoms_distance, Center_Geo_Type
 
 
 class Ligand:
@@ -139,7 +139,7 @@ class Complex:
     A class to represent a complex structure.
     """
 
-    def __init__(self, center_atom: str, shape: str, ligands: [Ligand]):
+    def __init__(self, center_atom: str, shape: np.ndarray, ligands: [Ligand]):
         """
         :param center_atom: atom symbol of the center metal atom
         :param shape: coordination geometry of the center metal atom "pentagonal_bipyramidal", "octahedral"
