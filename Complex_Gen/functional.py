@@ -9,19 +9,19 @@ from scipy.optimize import minimize
 from scipy.spatial.transform import Rotation as R
 
 
-def unit_vector(vector: np.ndarray):
+def unit_vector(vector: np.ndarray) -> np.ndarray:
     """ Returns the unit vector of the vector. """
     return vector / np.linalg.norm(vector, axis=-1)
 
 
-def angle_between(v1, v2):
+def angle_between(v1: np.ndarray, v2: np.ndarray) -> float:
     """ Returns the angle in radians between vectors 'v1' and 'v2'. """
     v1_u = unit_vector(v1)
     v2_u = unit_vector(v2)
     return np.arccos(np.clip(np.dot(v1_u, v2_u), -1.0, 1.0))
 
 
-def rodrigues_rotation_matrix(a, b):
+def rodrigues_rotation_matrix(a: np.ndarray, b: np.ndarray) -> np.ndarray:
     """ Returns the rotation matrix that aligns vector 'a' with vector 'b'. """
     # Normalize the input vectors
     a = unit_vector(a)
@@ -59,7 +59,7 @@ def find_mol_center(structure: Atoms) -> np.ndarray:
     return center
 
 
-def find_near_atoms(structure: Atoms, anchor: np.ndarray, num: int):
+def find_near_atoms(structure: Atoms, anchor: np.ndarray, num: int) -> np.ndarray:
     # find the index of nearest N atoms to the anchor in a molecule (ase atom) excluding hydrogen atoms
     dst = []
     for idx, atom in enumerate(structure):
@@ -76,11 +76,11 @@ def find_near_atoms(structure: Atoms, anchor: np.ndarray, num: int):
     return np.array(nearest_atom_indices)
 
 
-def find_ligand_pos(structure, anchor, site, dentate) -> np.ndarray:
+def find_ligand_pos(structure: Atoms, anchor: np.ndarray, site: str | [str], dentate: int) -> np.ndarray:
     """
     Find the directional vector of a ligand using anchor and the geometric center of the ligand.
     :param structure: ligand structure
-    :param anchor: 3d position within the ligand, could be np.ndarray or [np.ndarray]
+    :param anchor: 3d position within the ligand, np.ndarray
     :param site: type binding site of the ligand, could be str or [str]
     :param dentate:
     :return: 3d directional vector of the ligand
@@ -149,11 +149,11 @@ def find_ligand_pos(structure, anchor, site, dentate) -> np.ndarray:
     return ligand_pos
 
 
-def get_bond_dst(atom1: str, atom2: str, num_dentate: int) -> float:
+def get_bond_dst(atom1: str, atom2: str | [str], num_dentate: int) -> float:
     # todo: is there a better way to get bond distance?
     """
     Get the bond distance between two atoms.
-    set to be 1.1 times of the sum of covalent radii of the two atoms.
+    set to be 1.0 times of the sum of covalent radii of the two atoms.
 
     :param atom1: center atom symbol
     :param atom2: atom symbol
@@ -189,7 +189,7 @@ def get_bond_radii(atom: str) -> float:
 
 
 class Center_Geo_Type:
-    def trigonal_bipyramidal(self) -> list:
+    def trigonal_bipyramidal(self) -> np.ndarray:
         pos = [[0, 0, 1],  # up
                [0, 0, -1],  # down
                [1, 0, 0],  # plane 1
@@ -197,7 +197,7 @@ class Center_Geo_Type:
                [-0.5, -0.5 * 3 ** 0.5, 0]]
         return self.norm(pos)
 
-    def octahedral(self) -> list:
+    def octahedral(self) -> np.ndarray:
         pos = [[0, 0, 1],  # up
                [0, 0, -1],  # down
                [1, 0, 0],  # plane right
@@ -206,21 +206,21 @@ class Center_Geo_Type:
                [0, -1, 0]]  # plane back
         return self.norm(pos)
 
-    def tetrahedral(self):
+    def tetrahedral(self) -> np.ndarray:
         pos = [[1, 1, 1],
                [0, 0, 1],
                [1, 0, 0],
                [0, 1, 0]]
         return self.norm(pos)
 
-    def square_planar(self):
+    def square_planar(self) -> np.ndarray:
         pos = [[1, 0, 0],  # plane right
                [0, 1, 0],  # plane front
                [-1, 0, 0],  # plane left
                [0, -1, 0]]  # plane back
         return self.norm(pos)
 
-    def square_pyramidal(self):
+    def square_pyramidal(self) -> np.ndarray:
         pos = [[0, 0, 1],  # up
                [1, 0, 0],  # plane right
                [0, 1, 0],  # plane front
@@ -228,12 +228,12 @@ class Center_Geo_Type:
                [0, -1, 0]]  # plane back
         return self.norm(pos)
 
-    def linear(self):
+    def linear(self) -> np.ndarray:
         pos = [[0, 0, 1],  # up
                [0, 0, -1]]  # down
         return self.norm(pos)
 
-    def trigonal_planar(self):
+    def trigonal_planar(self) -> np.ndarray:
         pos = [[1, 0, 0],  # plane right
                [-0.5, 1.73 / 2, 0],  # plane front
                [-0.5, 1.73 / 2, 0]]  # plane left
@@ -246,29 +246,7 @@ class Center_Geo_Type:
         return pos
 
 
-def get_center_geo(geo_type: str) -> np.ndarray:
-    geo_type_dict = {"pentagonal_bipyramidal": [[0, 0, 1],  # up
-                                                [0, 0, -1],  # down
-                                                [1, 0, 0],  # plane 1
-                                                [-0.5, 0.5 * 3 ** 0.5, 0],  # plane 2
-                                                [-0.5, -0.5 * 3 ** 0.5, 0]],  # plane 3
-                     "octahedral": [[0, 0, 1],  # up
-                                    [0, 0, -1],  # down
-                                    [1, 0, 0],  # plane right
-                                    [0, 1, 0],  # plane front
-                                    [-1, 0, 0],  # plane left
-                                    [0, -1, 0]],  # plane back
-                     }
-    if geo_type not in geo_type_dict.keys():
-        raise ValueError(f"Geometry type {geo_type} not found in geo_type_dict")
-    else:
-        center_geo = np.array(geo_type_dict[geo_type])
-
-    center_geo = center_geo / np.linalg.norm(center_geo, axis=-1)[:, np.newaxis]
-    return center_geo
-
-
-def rotate_point_about_vector(point, axis, angle):
+def rotate_point_about_vector(point, axis, angle) -> np.ndarray:
     """Rotates a point about a given axis by a specified angle."""
     rotation = R.from_rotvec(axis / np.linalg.norm(axis) * angle)
     return rotation.apply(point)
@@ -286,7 +264,7 @@ def cost_function(angle, x1, x2, v1, v2, v0):
     return angle1 + angle2
 
 
-def rotate_bidendate_angel(x1, x2, v1, v2, v0):
+def rotate_bidendate_angel(x1, x2, v1, v2, v0) -> float:
     starting_points = [0, np.pi / 4, np.pi / 2, 3 * np.pi / 4]
     results = []
 
@@ -301,7 +279,7 @@ def rotate_bidendate_angel(x1, x2, v1, v2, v0):
     return best_angle
 
 
-def ase_to_xyz(atoms, decimals=8):
+def ase_to_xyz(atoms: Atoms, decimals=8) -> str:
     """Convert an ASE Atoms object to an XYZ string with specified decimals."""
     n_atoms = len(atoms)
     symbols = atoms.get_chemical_symbols()
@@ -316,7 +294,7 @@ def ase_to_xyz(atoms, decimals=8):
     return xyz_string
 
 
-def view_smiles(smiles: str):
+def view_smiles(smiles: str) -> None:
     """Visualize a molecule from a SMILES string for identifying atom indices."""
     # Convert SMILES to molecule
     mol = Chem.MolFromSmiles(smiles)
@@ -368,7 +346,7 @@ def view_smiles(smiles: str):
     plt.show()
 
 
-def get_atoms_index(smiles: str, atom_type: str):
+def get_atoms_index(smiles: str, atom_type: str)-> [int]:
     """ given smiles and a atom type, return and index of all atom_type in the smiles"""
 
     mol = Chem.MolFromSmiles(smiles)
