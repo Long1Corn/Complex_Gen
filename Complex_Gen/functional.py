@@ -76,7 +76,7 @@ def find_near_atoms(structure: Atoms, anchor: np.ndarray, num: int) -> np.ndarra
     return np.array(nearest_atom_indices)
 
 
-def find_ligand_pos(structure: Atoms, anchor: np.ndarray, site: str | [str], dentate: int) -> np.ndarray:
+def find_ligand_pos(structure: Atoms, anchor: np.ndarray, site: str or [str], dentate: int) -> np.ndarray:
     """
     Find the directional vector of a ligand using anchor and the geometric center of the ligand.
     :param structure: ligand structure
@@ -149,7 +149,7 @@ def find_ligand_pos(structure: Atoms, anchor: np.ndarray, site: str | [str], den
     return ligand_pos
 
 
-def get_bond_dst(atom1: str, atom2: str | [str], num_dentate: int) -> float:
+def get_bond_dst(atom1: str, atom2: str or [str], num_dentate: int) -> float:
     # todo: is there a better way to get bond distance?
     """
     Get the bond distance between two atoms.
@@ -178,9 +178,9 @@ def get_bond_dst(atom1: str, atom2: str | [str], num_dentate: int) -> float:
 
 def get_bond_radii(atom: str) -> float:
     if atom == "=":
-        dst = 0.6  # assuming bond length of pi site is 0.6 A
-    elif atom == "ring":
         dst = 0.7  # assuming bond length of pi site is 0.7 A
+    elif atom == "ring":
+        dst = 1.0  # assuming bond length of pi site is 1.0 A
     else:
         s = Atoms(atom).numbers[0]
         dst = covalent_radii[s]
@@ -208,9 +208,9 @@ class Center_Geo_Type:
 
     def tetrahedral(self) -> np.ndarray:
         pos = [[1, 1, 1],
-               [0, 0, 1],
-               [1, 0, 0],
-               [0, 1, 0]]
+                [-1, -1, 1],
+                [1, -1, -1],
+                [-1, 1, -1]]
         return self.norm(pos)
 
     def square_planar(self) -> np.ndarray:
@@ -340,7 +340,7 @@ def view_smiles(smiles: str) -> None:
 
     for i, atom in enumerate(mol.GetAtoms()):
         # ax.text(x, y, str(atom.GetSymbol()), color="black", fontsize=12, ha='center', va='center')
-        ax.text(pos_lst[i][0] * scale_facor + size / 2 + 10, size / 2 - pos_lst[i][1] * scale_facor - 10
+        ax.text(pos_lst[i][0] * scale_facor + size / 2 , size / 2 - pos_lst[i][1] * scale_facor
                 , str(atom.GetIdx()), color="red", fontsize=10, ha='center', va='center')
 
     plt.show()

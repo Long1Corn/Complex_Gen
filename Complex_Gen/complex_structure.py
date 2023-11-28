@@ -142,7 +142,7 @@ class Complex:
     def __init__(self, center_atom: str, shape: np.ndarray, ligands: [Ligand]):
         """
         :param center_atom: atom symbol of the center metal atom
-        :param shape: coordination geometry of the center metal atom "pentagonal_bipyramidal", "octahedral"
+        :param shape: coordination geometry of the center metal atom "trigonal_bipyramidal", "octahedral"
         :param ligand: A list of ligand objects
         """
         self._center_atom = Atom(center_atom, (0, 0, 0))
@@ -201,7 +201,7 @@ class Complex:
 
             # check if the ligands are too close to each other
             min_dst, min_dst_center = check_atoms_distance(com, ligand_coord_list)
-            if min_dst_center > min(bond_dst_list) - 1e-3:
+            if min_dst_center > min(bond_dst_list) - 0.1:
                 com_list.append(com)
                 dst_list.append(min_dst)
 
