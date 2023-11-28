@@ -32,6 +32,13 @@ class Ligand:
         self._structure = structure
         self._rdkit_mol = None
 
+        if len(self._sites_loc_idx) == 1:
+            self.dentate = 1
+        elif len(self._sites_loc_idx) == 2:
+            self.dentate = 2
+
+        self._gen_conformer()
+
     def _gen_conformer(self, max_conformers=200):
 
         # get ligand structure (ASE ATOMS) from smiles or structure
@@ -39,16 +46,14 @@ class Ligand:
             self._get_structure_from_smiles(max_conformers=max_conformers)
 
         # get binding sites
-        if len(self._sites_loc_idx) == 1:  # mono-dentate
-            self.dentate = 1
+        if self.dentate == 1:  # mono-dentate
             if len(self._binding_sites_idx[0]) == 1:
                 self._binding_sites = self._structure[self._binding_sites_idx[0][0]].symbol
             elif len(self._binding_sites_idx[0]) >= 2:
                 self._binding_sites = "="
 
-        elif len(self._sites_loc_idx) == 2:  # bi-dentate
+        elif self.dentate == 2:  # bi-dentate
             # todo: add support for pi bonding sites for bi-dentate ligands
-            self.dentate = 2
             self._binding_sites = []
 
             if len(self._binding_sites_idx[0]) == 1:
@@ -156,7 +161,7 @@ class Complex:
         :return: complex structure
         """
 
-        center_geo = get_center_geo(self._shape)
+        center_geo = self._shape
 
         com_list = []
         dst_list = []

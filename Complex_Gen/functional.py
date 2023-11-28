@@ -175,7 +175,8 @@ def get_bond_dst(atom1: str, atom2: str, num_dentate: int) -> float:
 
     return dst
 
-def get_bond_radii(atom:str)->float:
+
+def get_bond_radii(atom: str) -> float:
     if atom == "=":
         dst = 0.6  # assuming bond length of pi site is 0.6 A
     elif atom == "ring":
@@ -185,6 +186,64 @@ def get_bond_radii(atom:str)->float:
         dst = covalent_radii[s]
 
     return dst
+
+
+class Center_Geo_Type:
+    def trigonal_bipyramidal(self) -> list:
+        pos = [[0, 0, 1],  # up
+               [0, 0, -1],  # down
+               [1, 0, 0],  # plane 1
+               [-0.5, 0.5 * 3 ** 0.5, 0],  # plane 2
+               [-0.5, -0.5 * 3 ** 0.5, 0]]
+        return self.norm(pos)
+
+    def octahedral(self) -> list:
+        pos = [[0, 0, 1],  # up
+               [0, 0, -1],  # down
+               [1, 0, 0],  # plane right
+               [0, 1, 0],  # plane front
+               [-1, 0, 0],  # plane left
+               [0, -1, 0]]  # plane back
+        return self.norm(pos)
+
+    def tetrahedral(self):
+        pos = [[1, 1, 1],
+               [0, 0, 1],
+               [1, 0, 0],
+               [0, 1, 0]]
+        return self.norm(pos)
+
+    def square_planar(self):
+        pos = [[1, 0, 0],  # plane right
+               [0, 1, 0],  # plane front
+               [-1, 0, 0],  # plane left
+               [0, -1, 0]]  # plane back
+        return self.norm(pos)
+
+    def square_pyramidal(self):
+        pos = [[0, 0, 1],  # up
+               [1, 0, 0],  # plane right
+               [0, 1, 0],  # plane front
+               [-1, 0, 0],  # plane left
+               [0, -1, 0]]  # plane back
+        return self.norm(pos)
+
+    def linear(self):
+        pos = [[0, 0, 1],  # up
+               [0, 0, -1]]  # down
+        return self.norm(pos)
+
+    def trigonal_planar(self):
+        pos = [[1, 0, 0],  # plane right
+               [-0.5, 1.73 / 2, 0],  # plane front
+               [-0.5, 1.73 / 2, 0]]  # plane left
+
+        return self.norm(pos)
+
+    def norm(self, pos: list) -> np.ndarray:
+        pos = np.array(pos)
+        pos = pos / np.linalg.norm(pos, axis=-1)[:, np.newaxis]
+        return pos
 
 
 def get_center_geo(geo_type: str) -> np.ndarray:

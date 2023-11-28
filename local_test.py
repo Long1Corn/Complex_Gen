@@ -3,7 +3,7 @@ from ase import Atom, Atoms
 from ase.visualize import view
 
 from Complex_Gen.complex_structure import Ligand, Complex
-from Complex_Gen.functional import ase_to_xyz, get_atoms_index
+from Complex_Gen.functional import ase_to_xyz, get_atoms_index, view_smiles, Center_Geo_Type
 
 
 def CO():
@@ -25,25 +25,28 @@ def PH3():
     return Atoms([P1, H1, H2, H3])
 
 
-binding_sites_idx = get_atoms_index(smiles="CC1(OC(=C(O1)CP(C2=CC=CC=C2)C3=CC=CC=C3)CP(C4=CC=CC=C4)C5=CC=CC=C5)C", atom_type="P")
+ligand_smiles = r"C1=CC(=CC=C1)CCCCC2=CC=CC=C2"
 
-ligand1 = Ligand(structure=H(), binding_sites_idx=[[0]], sites_loc_idx=[0])
-ligand2 = Ligand(structure=CO(), binding_sites_idx=[[0]], sites_loc_idx=[1])
-ligand3 = Ligand(smiles="CC1(OC(=C(O1)CP(C2=CC=CC=C2)C3=CC=CC=C3)CP(C4=CC=CC=C4)C5=CC=CC=C5)C",
-                 binding_sites_idx=binding_sites_idx, sites_loc_idx=[2, 3])
+view_smiles(ligand_smiles)
+# binding_sites_idx = get_atoms_index(smiles=ligand_smiles, atom_type="P")
+
+ligand1 = Ligand(structure=H(), binding_sites_idx=[[0]], sites_loc_idx=[3])
+ligand2 = Ligand(structure=CO(), binding_sites_idx=[[0]], sites_loc_idx=[2])
+ligand3 = Ligand(smiles=ligand_smiles, binding_sites_idx=[[0, 1, 2, 3, 4, 5], [15, 10, 11, 12, 13, 14]],
+                 sites_loc_idx=[0, 1])
 # ligand3 = Ligand(smiles="c1cnc2c(c1)ccc3cccnc23", binding_sites_idx=[2, 12], sites_loc_idx=[1, 3])
 # ligand4 = Ligand(structure=PH3(), binding_sites_idx=[0], sites_loc_idx=[3])
 # ligand3 = Ligand(smiles=None, binding_sites_idx=[0], sites_loc_idx=[1])
 # ligand4= Ligand(smiles="P", binding_sites_idx=[0], sites_loc_idx=[3])
-# ligand5 = Ligand(structure=CO(), binding_sites_idx=[[0]], sites_loc_idx=[4])
-ligand5 = Ligand(smiles="CC(=O)OC=C", binding_sites_idx=[[4, 5]], sites_loc_idx=[4])
+ligand5 = Ligand(structure=CO(), binding_sites_idx=[[0]], sites_loc_idx=[4])
+# ligand5 = Ligand(smiles="CC(=O)OC=C", binding_sites_idx=[[4, 5]], sites_loc_idx=[4])
 
-shape = "pentagonal_bipyramidal"
-com = Complex(center_atom="Rh", ligands=[ligand1, ligand2, ligand3, ligand5], shape=shape)
-com.generate_complex(max_attempt=200)
+shape = Center_Geo_Type().trigonal_bipyramidal()
+com = Complex(center_atom="Rh", ligands=[ ligand2, ligand3, ligand5], shape=shape)
+com.generate_complex(max_attempt=1000)
 
 view(com.complex)
 
-xyz = ase_to_xyz(com.complex)
+# xyz = ase_to_xyz(com.complex)
 
-print(xyz)
+# print(xyz)
