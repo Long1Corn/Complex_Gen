@@ -207,6 +207,8 @@ class Complex:
         if len(com_list) == 0:
             self.complex = None
             print(f"Failed to generate complex after {max_attempt} attempts")
+            print(f"Cannot find a good geometry given current ligand")
+            return self.complex
 
         # get the max min_dst and idx
         max_min_dst = max(dst_list)
@@ -219,6 +221,7 @@ class Complex:
         else:
             self.complex = None
             print(f"Failed to generate complex after {max_attempt} attempts")
+            print(f"Maximum distance between ligands is {max_min_dst}")
 
         return self.complex
 
@@ -243,6 +246,9 @@ class Complex:
             v1 = pos[0]
             v2 = pos[1]
             pos = (v1 + v2) / 2
+
+            if np.linalg.norm(pos) == 0:
+                pos = np.cross(v1+1e-3*np.random.randn(1), v2+1e-3*np.random.randn(1))
 
         pos = pos / np.linalg.norm(pos)
 

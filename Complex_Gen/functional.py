@@ -118,9 +118,7 @@ def find_ligand_pos(structure, anchor, site, dentate) -> np.ndarray:
         anchors_center = (anchor1 + anchor2) / 2
 
         # 50% using plane, 50% using ligand center
-
         rand_num = np.random.rand()
-
         if rand_num > 0.5:
             near_atoms_idx1 = find_near_atoms(structure, anchor1, 2)
             near_atoms_idx2 = find_near_atoms(structure, anchor2, 2)
@@ -151,47 +149,40 @@ def find_ligand_pos(structure, anchor, site, dentate) -> np.ndarray:
     return ligand_pos
 
 
-def get_bond_dst(atom1: str, atom2, num_dentate: int) -> float:
+def get_bond_dst(atom1: str, atom2: str, num_dentate: int) -> float:
     # todo: is there a better way to get bond distance?
     """
     Get the bond distance between two atoms.
     set to be 1.1 times of the sum of covalent radii of the two atoms.
 
-    :param atom1: atom symbol
+    :param atom1: center atom symbol
     :param atom2: atom symbol
     :return: bond distance
     """
 
     if num_dentate == 1:  # mono-dentate
-        if atom1 == "=" or atom2 == "=":
-            # raise NotImplementedError("Bond distance for pi bond not implemented yet.")
-            if atom1 == "=":
-                atom = atom2
-            else:
-                atom = atom1
 
-            s1 = Atoms(atom).numbers[0]
-            dst = covalent_radii[s1] + 0.6  # assuming bond length of pi site is 0.6 A
-
-        elif atom1 == "ring" or atom2 == "ring":
-            if atom1 == "ring":
-                atom = atom2
-            else:
-                atom = atom1
-
-            s1 = Atoms(atom).numbers[0]
-            dst = covalent_radii[s1] + 0.7 # assuming bond length of pi site is 0.7 A
-        else:
-            s1 = Atoms(atom1).numbers[0]
-            s2 = Atoms(atom2).numbers[0]
-            dst = (covalent_radii[s1] + covalent_radii[s2]) * 1.0
+        dst1 = get_bond_radii(atom1)
+        dst2 = get_bond_radii(atom2)
+        dst = (dst1 + dst2) * 1.0
 
     elif num_dentate == 2:  # bi-dentate
-        s1 = Atoms(atom1).numbers[0]
-        s21 = Atoms(atom2[0]).numbers[0]
-        s22 = Atoms(atom2[1]).numbers[0]
+        dst1 = get_bond_radii(atom1)
+        dst21 = get_bond_radii(atom2[0])
+        dst22 = get_bond_radii(atom2[1])
 
-        dst = (covalent_radii[s1] + 0.5 * (covalent_radii[s21] + covalent_radii[s22])) * 1.0
+        dst = (dst1 + 0.5 * (dst21 + dst22)) * 1.0
+
+    return dst
+
+def get_bond_radii(atom:str)->float:
+    if atom == "=":
+        dst = 0.6  # assuming bond length of pi site is 0.6 A
+    elif atom == "ring":
+        dst = 0.7  # assuming bond length of pi site is 0.7 A
+    else:
+        s = Atoms(atom).numbers[0]
+        dst = covalent_radii[s]
 
     return dst
 
@@ -357,8 +348,7 @@ def xtb_opt(structure: Atoms, fmax: float = 0.05, max_step: int = 200, fix_idx: 
     return structure
 
 
-def check_atoms_distance(structure: Atoms, ligand_list:[Atoms]) -> (float, float):
-
+def check_atoms_distance(structure: Atoms, ligand_list: [Atoms]) -> (float, float):
     def min_distance_between_two_group_of_points(points1, points2):
         """Calculate the minimum distance between two groups of points."""
         min_distance = 1E10
@@ -388,4 +378,3 @@ def check_atoms_distance(structure: Atoms, ligand_list:[Atoms]) -> (float, float
     min_dst_center = np.min(dst_center)
 
     return min_dst, min_dst_center
-
