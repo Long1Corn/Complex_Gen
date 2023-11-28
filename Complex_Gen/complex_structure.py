@@ -5,7 +5,7 @@ from ase import Atoms, Atom
 from rdkit import Chem
 from rdkit.Chem import AllChem
 
-from Complex_Gen.functional import get_center_geo, get_bond_dst, find_ligand_pos, rodrigues_rotation_matrix, \
+from Complex_Gen.functional import get_bond_dst, find_ligand_pos, rodrigues_rotation_matrix, \
     rotate_bidendate_angel, rotate_point_about_vector, check_atoms_distance
 
 
