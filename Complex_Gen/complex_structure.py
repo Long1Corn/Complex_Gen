@@ -198,7 +198,7 @@ class Complex:
 
             # check if the ligands are too close to each other
             min_dst, min_dst_center = check_atoms_distance(com, ligand_coord_list)
-            if min_dst_center > min(bond_dst_list) - 0.1:
+            if min_dst_center > min(bond_dst_list) * 0.7:
                 com_list.append(com)
                 dst_list.append(min_dst)
 

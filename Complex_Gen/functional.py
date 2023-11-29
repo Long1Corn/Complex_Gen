@@ -414,6 +414,7 @@ def check_atoms_distance(structure: Atoms, ligand_list: [Atoms]) -> (float, floa
 
     # check if any two ligands in the structure is too close
     ligand_pos_list = [ligand.get_positions() for ligand in ligand_list]
+    ligand_pos_list.append(np.array([[0, 0, 0]])) # add center atom
 
     min_dst = 1E10
     for i in range(len(ligand_list)):
@@ -424,8 +425,7 @@ def check_atoms_distance(structure: Atoms, ligand_list: [Atoms]) -> (float, floa
 
     # check min distance between atoms and center (0,0,0)
     pos = structure.get_positions()
-    center = np.array([0, 0, 0])
-    dst_center = np.linalg.norm(pos - center, axis=-1)
+    dst_center = np.linalg.norm(pos, axis=-1)
     # remove center atom, which has zero distance
     dst_center = dst_center[dst_center > 1e-3]
     min_dst_center = np.min(dst_center)
