@@ -20,8 +20,6 @@ class Ligand:
         :param structure: ASE Atoms object of the ligand (provide either one of the two)
         :param binding_sites_idx: A list of atom indices of the binding sites
         :param sites_loc_idx: A list of atom indices of the sites location
-        :param anchor: position of the binding site within the ligand
-        :param direction: direction of the ligand, default to be the geometric center of the ligand
         """
         self._structure = None
         self._rdkit_mol = None
@@ -52,7 +50,6 @@ class Ligand:
                 self._binding_sites = "="
 
         elif self.dentate == 2:  # bi-dentate
-            # todo: add support for pi bonding sites for bi-dentate ligands
             self._binding_sites = []
 
             if len(self._binding_sites_idx[0]) == 1:
@@ -98,11 +95,11 @@ class Ligand:
         # Create an ASE Atoms object
         ase_atoms = Atoms(numbers=atomic_numbers, positions=coords)
 
+        # 50% chance to mirror the ligand
         if mirror:
-            # 50% chance to mirror the ligand
             if random.random() > 0.5:
                 ase_atoms.positions[:, 0] = -ase_atoms.positions[:, 0]
-        #
+
         # randomly rotate the ligand
         ase_atoms.rotate(random.random() * 360, 'z')
 

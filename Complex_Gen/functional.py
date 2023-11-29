@@ -208,9 +208,9 @@ class Center_Geo_Type:
 
     def tetrahedral(self) -> np.ndarray:
         pos = [[1, 1, 1],
-                [-1, -1, 1],
-                [1, -1, -1],
-                [-1, 1, -1]]
+               [-1, -1, 1],
+               [1, -1, -1],
+               [-1, 1, -1]]
         return self.norm(pos)
 
     def square_planar(self) -> np.ndarray:
@@ -340,24 +340,40 @@ def view_smiles(smiles: str) -> None:
 
     for i, atom in enumerate(mol.GetAtoms()):
         # ax.text(x, y, str(atom.GetSymbol()), color="black", fontsize=12, ha='center', va='center')
-        ax.text(pos_lst[i][0] * scale_facor + size / 2 , size / 2 - pos_lst[i][1] * scale_facor
+        ax.text(pos_lst[i][0] * scale_facor + size / 2, size / 2 - pos_lst[i][1] * scale_facor
                 , str(atom.GetIdx()), color="red", fontsize=10, ha='center', va='center')
 
     plt.show()
 
 
-def get_atoms_index(smiles: str, atom_type: str)-> [int]:
-    """ given smiles and a atom type, return and index of all atom_type in the smiles"""
+def get_atoms_index(smiles: str, atom_type: str = None, ring_type: int = None) -> [[int]]:
+    """ given smiles and a atom type, return and index of all atom_type in the smiles;
+    or given smiles and a ring type, return and index of all ring_type in the smiles"""
 
     mol = Chem.MolFromSmiles(smiles)
     mol = Chem.AddHs(mol)
-    atomic_numbers = [atom.GetAtomicNum() for atom in mol.GetAtoms()]
 
-    # get atomic number of atom_type
-    atom_num = Chem.GetPeriodicTable().GetAtomicNumber(atom_type)
+    if atom_type is None and ring_type is None:
+        raise ValueError("atom_type and ring_type cannot be None at the same time")
 
-    # get index of atom_type
-    atom_index = [[i] for i, x in enumerate(atomic_numbers) if x == atom_num]
+    elif atom_type is not None:
+
+        atomic_numbers = [atom.GetAtomicNum() for atom in mol.GetAtoms()]
+
+        # get atomic number of atom_type
+        atom_num = Chem.GetPeriodicTable().GetAtomicNumber(atom_type)
+
+        # get index of atom_type
+        atom_index = [[i] for i, x in enumerate(atomic_numbers) if x == atom_num]
+
+    elif ring_type is not None:
+        # Identify the rings
+        ssr = Chem.GetSymmSSSR(mol)
+        atom_index = []
+        # Filter and print 5-membered carbon rings
+        for ring in ssr:
+            if len(ring) == 5 and all(mol.GetAtomWithIdx(i).GetSymbol() == 'C' for i in ring):
+                atom_index.append(list(ring))
 
     if len(atom_index) == 0:
         raise ValueError(f"Atom type {atom_type} not found in smiles {smiles}")
