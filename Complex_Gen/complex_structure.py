@@ -101,7 +101,7 @@ class Ligand:
                 ase_atoms.positions[:, 0] = -ase_atoms.positions[:, 0]
 
         # randomly rotate the ligand
-        ase_atoms.rotate(random.random() * 360, 'z')
+        # ase_atoms.rotate(random.random() * 360, 'z')
 
         self._structure = ase_atoms
 
@@ -147,7 +147,19 @@ class Complex:
         self._ligands = ligands
         self.complex = None
 
-    def generate_complex(self, max_attempt=200, tol_min_dst=1.0) -> Atoms or None:
+        # find the index of the binding atoms
+        self._bidenated_binding_atoms = []
+        self._bidenated_ligand = []
+        num = 1
+        for n, ligand in enumerate(self._ligands):
+            if ligand.dentate == 2:
+                self._bidenated_ligand.extend([n, n])
+                for sites_idx in ligand._binding_sites_idx:
+                    for site in sites_idx:
+                        self._bidenated_binding_atoms.append(site + num)
+            num = num + len(ligand._structure)
+
+    def generate_complex(self, max_attempt=200, tol_min_dst=1.2) -> Atoms or None:
         """
         Generate the initial complex structure.
         :param max_attempt: maximum number of attempts to generate the complex, also control number of conformers
@@ -196,9 +208,14 @@ class Complex:
                 com = com + ligand_coord
                 ligand_coord_list.append(ligand_coord)
 
-            # check if the ligands are too close to each other
+            # check if the ligands are too close to each other and bi-dentated coordination bonds length
             min_dst, min_dst_center = check_atoms_distance(com, ligand_coord_list)
-            if min_dst_center > min(bond_dst_list) * 0.7:
+            bidentated_atom_pos = com.positions[self._bidenated_binding_atoms]
+            bidentated_length = np.linalg.norm(bidentated_atom_pos, axis=1)
+            bidentated_bond_dst_list = np.array(bond_dst_list)[self._bidenated_ligand]
+
+            if np.all(bidentated_length > bidentated_bond_dst_list - 0.2) and \
+                    np.all(bidentated_length < bidentated_bond_dst_list + 0.2):
                 com_list.append(com)
                 dst_list.append(min_dst)
 
@@ -211,6 +228,8 @@ class Complex:
         # get the max min_dst and idx
         max_min_dst = max(dst_list)
         idx = dst_list.index(max_min_dst)
+
+        print(max_min_dst)
 
         # todo: there should be a better way to handle this
         if max_min_dst > tol_min_dst:

@@ -24,26 +24,32 @@ def PH3():
     H3 = Atom('H', (-0.866, 0.5, 1))
     return Atoms([P1, H1, H2, H3])
 
+def CH3():
+    C1 = Atom('C', (0, 0, 0))
+    H1 = Atom('H', (0, -1, 1))
+    H2 = Atom('H', (0.866, 0.5, 1))
+    H3 = Atom('H', (-0.866, 0.5, 1))
+    return Atoms([C1, H1, H2, H3])
 
-ligand_smiles = r"C1=CC(=CC=C1)CCCCC2=CC=CC=C2"
 
+ligand_smiles = r"CC1(OC(=C(O1)CP(C2=CC=CC=C2)C3=CC=CC=C3)CP(C4=CC=CC=C4)C5=CC=CC=C5)C"
 view_smiles(ligand_smiles)
+
+idx = get_atoms_index(smiles=ligand_smiles, atom_type="P")
+print(idx)
+
+# view_smiles(ligand_smiles)
 # binding_sites_idx = get_atoms_index(smiles=ligand_smiles, atom_type="P")
 
-ligand1 = Ligand(structure=H(), binding_sites_idx=[[0]], sites_loc_idx=[3])
-ligand2 = Ligand(structure=CO(), binding_sites_idx=[[0]], sites_loc_idx=[2])
-ligand3 = Ligand(smiles=ligand_smiles, binding_sites_idx=[[0, 1, 2, 3, 4, 5], [15, 10, 11, 12, 13, 14]],
-                 sites_loc_idx=[0, 1])
-# ligand3 = Ligand(smiles="c1cnc2c(c1)ccc3cccnc23", binding_sites_idx=[2, 12], sites_loc_idx=[1, 3])
-# ligand4 = Ligand(structure=PH3(), binding_sites_idx=[0], sites_loc_idx=[3])
-# ligand3 = Ligand(smiles=None, binding_sites_idx=[0], sites_loc_idx=[1])
-# ligand4= Ligand(smiles="P", binding_sites_idx=[0], sites_loc_idx=[3])
-ligand5 = Ligand(structure=CO(), binding_sites_idx=[[0]], sites_loc_idx=[4])
-# ligand5 = Ligand(smiles="CC(=O)OC=C", binding_sites_idx=[[4, 5]], sites_loc_idx=[4])
+ligand1 = Ligand(structure=H(), binding_sites_idx=[[0]], sites_loc_idx=[0])
+ligand2 = Ligand(structure=CO(), binding_sites_idx=[[0]], sites_loc_idx=[1])
+ligand3 = Ligand(smiles=ligand_smiles, binding_sites_idx=idx, sites_loc_idx=[2, 3])
+# ligand3 =  Ligand(smiles="C", binding_sites_idx=[[0]], sites_loc_idx=[2])
+ligand4 = Ligand(smiles="CC(=O)OC=C", binding_sites_idx=[[4,5]], sites_loc_idx=[4])
 
 shape = Center_Geo_Type().trigonal_bipyramidal()
-com = Complex(center_atom="Rh", ligands=[ ligand2, ligand3, ligand5], shape=shape)
-com.generate_complex(max_attempt=1000)
+com = Complex(center_atom="Rh", ligands=[ligand1, ligand2, ligand3, ligand4], shape=shape)
+com.generate_complex(max_attempt=1000, tol_min_dst=1.2)
 
 view(com.complex)
 
