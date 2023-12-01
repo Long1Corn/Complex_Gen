@@ -155,11 +155,11 @@ class Complex:
             if ligand.dentate == 2:
                 self._bidenated_ligand.extend([n, n])
                 for sites_idx in ligand._binding_sites_idx:
-                    for site in sites_idx:
-                        self._bidenated_binding_atoms.append(site + num)
+                    self._bidenated_binding_atoms.append([site + num for site in sites_idx])
+
             num = num + len(ligand._structure)
 
-    def generate_complex(self, max_attempt=200, tol_min_dst=1.2) -> Atoms or None:
+    def generate_complex(self, max_attempt=200, tol_min_dst=1.2, tol_bond_dst=0.2) -> Atoms or None:
         """
         Generate the initial complex structure.
         :param max_attempt: maximum number of attempts to generate the complex, also control number of conformers
@@ -210,26 +210,24 @@ class Complex:
 
             # check if the ligands are too close to each other and bi-dentated coordination bonds length
             min_dst, min_dst_center = check_atoms_distance(com, ligand_coord_list)
-            bidentated_atom_pos = com.positions[self._bidenated_binding_atoms]
+            bidentated_atom_pos = [np.mean(com.positions[atom], axis=0) for atom in self._bidenated_binding_atoms]
             bidentated_length = np.linalg.norm(bidentated_atom_pos, axis=1)
             bidentated_bond_dst_list = np.array(bond_dst_list)[self._bidenated_ligand]
 
-            if np.all(bidentated_length > bidentated_bond_dst_list - 0.2) and \
-                    np.all(bidentated_length < bidentated_bond_dst_list + 0.2):
+            if np.all(bidentated_length > bidentated_bond_dst_list - tol_bond_dst) and \
+                    np.all(bidentated_length < bidentated_bond_dst_list + tol_bond_dst):
                 com_list.append(com)
                 dst_list.append(min_dst)
 
         if len(com_list) == 0:
             self.complex = None
             print(f"Failed to generate complex after {max_attempt} attempts")
-            print(f"Cannot find a good geometry given current ligand")
+            print(f"Cannot find a good geometry given current ligand to satisfy the tol_bond_dst {tol_bond_dst}A")
             return self.complex
 
         # get the max min_dst and idx
         max_min_dst = max(dst_list)
         idx = dst_list.index(max_min_dst)
-
-        print(max_min_dst)
 
         # todo: there should be a better way to handle this
         if max_min_dst > tol_min_dst:
@@ -238,7 +236,7 @@ class Complex:
         else:
             self.complex = None
             print(f"Failed to generate complex after {max_attempt} attempts")
-            print(f"Maximum distance between ligands is {max_min_dst}")
+            print(f"Maximum distance between ligands is {max_min_dst}, which is smaller than tol_min_dst {tol_min_dst}A")
 
         return self.complex
 
