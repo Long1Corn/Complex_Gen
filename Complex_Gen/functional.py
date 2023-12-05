@@ -164,14 +164,14 @@ def get_bond_dst(atom1: str, atom2: str or [str], num_dentate: int) -> float:
 
         dst1 = get_bond_radii(atom1)
         dst2 = get_bond_radii(atom2)
-        dst = (dst1 + dst2) * 1.0
+        dst = (dst1 + dst2) * 0.9
 
     elif num_dentate == 2:  # bi-dentate
         dst1 = get_bond_radii(atom1)
         dst21 = get_bond_radii(atom2[0])
         dst22 = get_bond_radii(atom2[1])
 
-        dst = (dst1 + 0.5 * (dst21 + dst22)) * 1.0
+        dst = (dst1 + 0.5 * (dst21 + dst22)) * 0.9
 
     return dst
 
