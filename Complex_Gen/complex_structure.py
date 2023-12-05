@@ -162,7 +162,7 @@ class Complex:
 
             num = num + len(ligand._structure)
 
-    def generate_complex(self, max_attempt=200, tol_min_dst=1.0, tol_bond_dst=0.2) -> Atoms or None:
+    def generate_complex(self, max_attempt=200, tol_min_dst=1.8, tol_bond_dst=0.2) -> Atoms or None:
         """
         Generate the initial complex structure.
         :param max_attempt: maximum number of attempts to generate the complex, also control number of conformers

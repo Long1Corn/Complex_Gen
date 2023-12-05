@@ -164,14 +164,14 @@ def get_bond_dst(atom1: str, atom2: str or [str], num_dentate: int) -> float:
 
         dst1 = get_bond_radii(atom1)
         dst2 = get_bond_radii(atom2)
-        dst = (dst1 + dst2) * 0.9
+        dst = (dst1 + dst2) * 1.0
 
     elif num_dentate == 2:  # bi-dentate
         dst1 = get_bond_radii(atom1)
         dst21 = get_bond_radii(atom2[0])
         dst22 = get_bond_radii(atom2[1])
 
-        dst = (dst1 + 0.5 * (dst21 + dst22)) * 0.9
+        dst = (dst1 + 0.5 * (dst21 + dst22)) * 1.0
 
     return dst
 
@@ -180,7 +180,7 @@ def get_bond_radii(atom: str) -> float:
     if atom == "=":
         dst = 0.7  # assuming bond length of pi site is 0.7 A
     elif atom == "ring":
-        dst = 1.0  # assuming bond length of pi site is 1.0 A
+        dst = 0.9 # assuming bond length of ring site is 1.0 A
     else:
         s = Atoms(atom).numbers[0]
         dst = covalent_radii[s]
