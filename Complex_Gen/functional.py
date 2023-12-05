@@ -418,8 +418,8 @@ def check_atoms_distance(structure: Atoms, ligand_list: [Atoms]) -> (float, floa
 
     ligand_dst_list = []
 
-    for i in range(len(ligand_list)):
-        for j in range(i + 1, len(ligand_list)):
+    for i in range(len(ligand_pos_list)):
+        for j in range(i + 1, len(ligand_pos_list)):
             dst = min_distance_between_two_group_of_points(ligand_pos_list[i], ligand_pos_list[j])
             ligand_dst_list.append(dst)
 

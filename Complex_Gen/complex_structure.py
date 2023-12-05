@@ -36,7 +36,7 @@ class Ligand:
 
         self._gen_conformer()
 
-    def _gen_conformer(self, max_conformers=200):
+    def _gen_conformer(self, max_conformers=300):
 
         # get ligand structure (ASE ATOMS) from smiles or structure
         if self._smiles is not None:
@@ -70,7 +70,7 @@ class Ligand:
         self._anchor = self._find_anchor(self.dentate)
         self._direction = self._find_ligand_pos()
 
-    def _get_structure_from_smiles(self, max_conformers=200, mirror=False):
+    def _get_structure_from_smiles(self, max_conformers=300, mirror=False):
         # Create RDKit molecule from SMILES
 
         if self._rdkit_mol is None:
@@ -162,7 +162,7 @@ class Complex:
 
             num = num + len(ligand._structure)
 
-    def generate_complex(self, max_attempt=200, tol_min_dst=1.8, tol_bond_dst=0.2) -> Atoms or None:
+    def generate_complex(self, max_attempt=1000, tol_min_dst=1.5, tol_bond_dst=0.2) -> Atoms or None:
         """
         Generate the initial complex structure.
         :param max_attempt: maximum number of attempts to generate the complex, also control number of conformers
