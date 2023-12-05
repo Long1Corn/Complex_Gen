@@ -136,7 +136,7 @@ class Complex:
     A class to represent a complex structure.
     """
 
-    def __init__(self, center_atom: str, shape: np.ndarray, ligands: [Ligand]):
+    def __init__(self, center_atom: str, shape: np.ndarray, ligands: [Ligand], base_structure: Atoms = None):
         """
         :param center_atom: atom symbol of the center metal atom
         :param shape: coordination geometry of the center metal atom "trigonal_bipyramidal", "octahedral"
@@ -146,6 +146,7 @@ class Complex:
         self._shape = shape
         self._ligands = ligands
         self.complex = None
+        self.base_structure = base_structure
 
         # find the index of the binding atoms
         self._bidenated_binding_atoms = []
@@ -173,7 +174,11 @@ class Complex:
 
         for attempt in range(max_attempt):
 
-            com = Atoms([self._center_atom])
+            if self.base_structure is not None:
+                com = self.base_structure.copy()
+            else:
+                com = Atoms([self._center_atom])
+
             bond_dst_list = []
             ligand_coord_list = []
 
@@ -210,33 +215,34 @@ class Complex:
 
             # check if the ligands are too close to each other and bi-dentated coordination bonds length
             min_dst, min_dst_center = check_atoms_distance(com, ligand_coord_list)
-            bidentated_atom_pos = [np.mean(com.positions[atom], axis=0) for atom in self._bidenated_binding_atoms]
-            bidentated_length = np.linalg.norm(bidentated_atom_pos, axis=1)
-            bidentated_bond_dst_list = np.array(bond_dst_list)[self._bidenated_ligand]
 
-            if np.all(bidentated_length > bidentated_bond_dst_list - tol_bond_dst) and \
-                    np.all(bidentated_length < bidentated_bond_dst_list + tol_bond_dst):
-                com_list.append(com)
-                dst_list.append(min_dst)
+            if len(self._bidenated_binding_atoms) > 0 :
+                bidentated_atom_pos = [np.mean(com.positions[atom], axis=0) for atom in self._bidenated_binding_atoms]
+                bidentated_length = np.linalg.norm(bidentated_atom_pos, axis=1)
+                bidentated_bond_dst_list = np.array(bond_dst_list)[self._bidenated_ligand]
+
+                if np.all(bidentated_length < bidentated_bond_dst_list - tol_bond_dst) and \
+                        np.all(bidentated_length > bidentated_bond_dst_list + tol_bond_dst):
+                    continue
+
+            if min_dst < tol_min_dst:
+                continue
+
+            # append valid complex structure
+            com_list.append(com)
+            dst_list.append(min_dst)
 
         if len(com_list) == 0:
             self.complex = None
             print(f"Failed to generate complex after {max_attempt} attempts")
-            print(f"Cannot find a good geometry given current ligand to satisfy the tol_bond_dst {tol_bond_dst}A")
-            return self.complex
-
-        # get the max min_dst and idx
-        max_min_dst = max(dst_list)
-        idx = dst_list.index(max_min_dst)
-
-        # todo: there should be a better way to handle this
-        if max_min_dst > tol_min_dst:
+            print(f"Cannot find a good geometry given current ligand to satisfy the tol_bond_dst {tol_bond_dst}A,"
+                  f" and tol_min_dst {tol_min_dst}A")
+        else:
+            # get the max min_dst and idx
+            max_min_dst = max(dst_list)
+            idx = dst_list.index(max_min_dst)
 
             self.complex = com_list[idx]
-        else:
-            self.complex = None
-            print(f"Failed to generate complex after {max_attempt} attempts")
-            print(f"Maximum distance between ligands is {max_min_dst}, which is smaller than tol_min_dst {tol_min_dst}A")
 
         return self.complex
 
@@ -288,6 +294,23 @@ class Complex:
                 atom.position = rotate_point_about_vector(atom.position, pos, rotate_angel)
 
         return ligand_structure
+
+    def remove_ligand(self, ligand_idx: int):
+        """
+        Remove a ligand from the complex
+        :param ligand_idx: index of the ligand to be removed
+        :return: None
+        """
+        # get atom index of the ligand to be removed
+        ligand_start_idx = sum([len(ligand._structure) for ligand in self._ligands[:ligand_idx]]) + 1
+        ligand_end_idx = ligand_start_idx + len(self._ligands[ligand_idx]._structure)
+
+        # remove the ligand from the complex based on atom index
+        mask = np.ones(len(self.complex), dtype=bool)
+        mask[ligand_start_idx:ligand_end_idx] = False
+        self.complex = self.complex[mask]
+
+        self._ligands.pop(ligand_idx)
 
     def __repr__(self):
         return f"Complex:{self._center_atom.symbol}{self._ligands}"

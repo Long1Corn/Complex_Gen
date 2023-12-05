@@ -1,3 +1,5 @@
+from copy import deepcopy
+
 import numpy
 from ase import Atom, Atoms
 from ase.visualize import view
@@ -32,8 +34,9 @@ def CH3():
     return Atoms([C1, H1, H2, H3])
 
 
+# test DIOP
 ligand_smiles = r"CC1(OC(=C(O1)CP(C2=CC=CC=C2)C3=CC=CC=C3)CP(C4=CC=CC=C4)C5=CC=CC=C5)C"
-view_smiles(ligand_smiles)
+# view_smiles(ligand_smiles)
 
 idx = get_atoms_index(smiles=ligand_smiles, atom_type="P")
 print(idx)
@@ -49,10 +52,15 @@ ligand4 = Ligand(smiles="CC(=O)OC=C", binding_sites_idx=[[4,5]], sites_loc_idx=[
 
 shape = Center_Geo_Type().trigonal_bipyramidal()
 com = Complex(center_atom="Rh", ligands=[ligand1, ligand2, ligand3, ligand4], shape=shape)
-com.generate_complex(max_attempt=1000, tol_min_dst=1.2)
+com.generate_complex(max_attempt=500, tol_min_dst=1.2)
 
 view(com.complex)
 
 # xyz = ase_to_xyz(com.complex)
 
 # print(xyz)
+
+s = deepcopy(com)
+s.remove_ligand(3)
+
+view(s.complex)
