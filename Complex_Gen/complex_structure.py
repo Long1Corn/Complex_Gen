@@ -26,7 +26,7 @@ class Ligand:
         self._binding_sites_idx = binding_sites_idx
         self._sites_loc_idx = sites_loc_idx
         self._smiles = smiles
-        self._structure = structure
+        self._structure: Atoms = structure
         self._rdkit_mol = None
 
         if len(self._sites_loc_idx) == 1:
@@ -136,7 +136,8 @@ class Complex:
     A class to represent a complex structure.
     """
 
-    def __init__(self, center_atom: str, shape: np.ndarray, ligands: [Ligand], base_structure: Atoms = None):
+    def __init__(self, center_atom: str, shape: np.ndarray, ligands: [Ligand], base_structure: Atoms = None,
+                 base_ligands: [Ligand] = None):
         """
         :param center_atom: atom symbol of the center metal atom
         :param shape: coordination geometry of the center metal atom "trigonal_bipyramidal", "octahedral"
@@ -147,6 +148,7 @@ class Complex:
         self._ligands = ligands
         self.complex = None
         self.base_structure = base_structure
+        self.base_liagnds = base_ligands
 
         # find the index of the binding atoms
         self._bidenated_binding_atoms = []
@@ -210,13 +212,17 @@ class Complex:
 
                 # get ligand position and combine the ligand
                 ligand_coord = self.place_ligand(self._ligands[i], direction, bond_dst * angel_factor)
+                self._ligands[i]._structure = ligand_coord
                 com = com + ligand_coord
                 ligand_coord_list.append(ligand_coord)
 
             # check if the ligands are too close to each other and bi-dentated coordination bonds length
+            if self.base_liagnds is not None:
+                for ligand in self.base_liagnds:
+                    ligand_coord_list.append(ligand._structure)
             min_dst, min_dst_center = check_atoms_distance(com, ligand_coord_list)
 
-            if len(self._bidenated_binding_atoms) > 0 :
+            if len(self._bidenated_binding_atoms) > 0:
                 bidentated_atom_pos = [np.mean(com.positions[atom], axis=0) for atom in self._bidenated_binding_atoms]
                 bidentated_length = np.linalg.norm(bidentated_atom_pos, axis=1)
                 bidentated_bond_dst_list = np.array(bond_dst_list)[self._bidenated_ligand]
