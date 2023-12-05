@@ -383,7 +383,7 @@ def get_atoms_index(smiles: str, atom_type: str = None, ring_type: int = None) -
 
 def xtb_opt(structure: Atoms, fmax: float = 0.05, max_step: int = 200, fix_idx: list = None) -> Atoms:
     from ase.constraints import FixAtoms
-    from ase.calculator.xtb import XTB
+    from xtb.ase.calculator import XTB
     from ase.optimize import BFGS
     # Define which atoms to fix. For example, fixing the first and second atoms:
     if fix_idx is not None:
@@ -391,7 +391,7 @@ def xtb_opt(structure: Atoms, fmax: float = 0.05, max_step: int = 200, fix_idx: 
         structure.set_constraint(constraint)
 
     # Setting up the calculator
-    calculator = XTB(method='GFN2-xTB', gfn_version=2, charge=0, scf_max_cycles=200) # Choose your method
+    calculator = XTB(method='GFN2-xTB', gfn_version=2, charge=0, scf_max_cycles=200, ) # Choose your method
     structure.set_calculator(calculator)
 
     # Optimization
