@@ -308,15 +308,26 @@ class Complex:
         :return: None
         """
         # get atom index of the ligand to be removed
-        ligand_start_idx = sum([len(ligand._structure) for ligand in self._ligands[:ligand_idx]]) + 1
-        ligand_end_idx = ligand_start_idx + len(self._ligands[ligand_idx]._structure)
+        index = self.get_ligand_atom_index(ligand_idx)
 
         # remove the ligand from the complex based on atom index
         mask = np.ones(len(self.complex), dtype=bool)
-        mask[ligand_start_idx:ligand_end_idx] = False
+        mask[index] = False
         self.complex = self.complex[mask]
 
         self._ligands.pop(ligand_idx)
+
+    def get_ligand_atom_index(self, ligand_idx: int):
+        """
+        Get the atom index of a ligand in the complex
+        :param ligand_idx: index of the ligand
+        :return: atom index of the ligand
+        """
+        ligand_start_idx = sum([len(ligand._structure) for ligand in self._ligands[:ligand_idx]]) + 1
+        ligand_end_idx = ligand_start_idx + len(self._ligands[ligand_idx]._structure)
+        index = np.arange(ligand_start_idx, ligand_end_idx).tolist()
+
+        return index
 
     def __repr__(self):
         return f"Complex:{self._center_atom.symbol}{self._ligands}"
