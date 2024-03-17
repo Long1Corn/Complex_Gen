@@ -441,9 +441,13 @@ def check_atoms_distance(structure: Atoms, ligand_list: [Atoms]) -> (float, floa
             dst = min_distance_between_two_group_of_points(ligand_pos_list[i], ligand_pos_list[j])
             ligand_dst_list.append(dst)
 
+
     # sum the smallest 3 distances
     ligand_dst_list.sort()
-    min_dst = np.mean(ligand_dst_list[:min(1, len(ligand_dst_list))])
+    min_3_dst = np.mean(ligand_dst_list[:min(3, len(ligand_dst_list))])
+
+    # min dst
+    min_dst = min(ligand_dst_list)
 
     # check min distance between atoms and center (0,0,0)
     pos = structure.get_positions()
@@ -452,4 +456,4 @@ def check_atoms_distance(structure: Atoms, ligand_list: [Atoms]) -> (float, floa
     dst_center = dst_center[dst_center > 1e-3]
     min_dst_center = np.min(dst_center)
 
-    return min_dst, min_dst_center
+    return min_dst, min_3_dst, min_dst_center

@@ -221,7 +221,7 @@ class Complex:
                 for ligand in self.base_liagnds:
                     ligand_coord_list.append(ligand._structure)
 
-            min_dst, min_dst_center = check_atoms_distance(com, ligand_coord_list)
+            min_dst, min_3_dst, min_dst_center = check_atoms_distance(com, ligand_coord_list)
 
             if len(self._bidenated_binding_atoms) > 0:
                 bidentated_atom_dir = [np.mean(com.positions[atom], axis=0) for atom in self._bidenated_binding_atoms]
@@ -233,15 +233,20 @@ class Complex:
                         np.any(bidentated_length > bidentated_bond_dst_list + tol_bond_dst):
                     continue  # discard the complex if the bi-dentated coordination bonds length is not satisfied
 
+            # if atoms in bidentated ligands are too close to center atom
+            bidentated_atom_pos = [com.positions[atom] for atom in self._bidenated_binding_atoms]
+            bidentated_atom_dst = np.linalg.norm(bidentated_atom_pos, axis=1)
+            min_bid_dst = bidentated_atom_dst.min()
+            if min_bid_dst < tol_min_dst * 0.7:
+                continue
+
             # if the ligands are too close to each other and
             if min_dst < tol_min_dst:
                 continue  # discard the complex if the ligands are too close to each other
 
             # append valid complex structure
             com_list.append(com)
-            dst_list.append(min_dst)
-
-            print(f"Attempt {attempt + 1}/{max_attempt}, min_dst: {min_dst:.2f}A, min_dst_center: {min_dst_center:.2f}A")
+            dst_list.append(min_3_dst)
 
             if len(com_list) > 5:
                 break  # stop the loop if there are more than 10 valid complex
