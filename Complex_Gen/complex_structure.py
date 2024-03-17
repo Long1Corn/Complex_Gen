@@ -70,7 +70,7 @@ class Ligand:
         self._anchor = self._find_anchor(self.dentate)
         self._direction = self._find_ligand_pos()
 
-    def _get_structure_from_smiles(self, max_conformers=300, mirror=False):
+    def _get_structure_from_smiles(self, max_conformers=400, mirror=False):
         # Create RDKit molecule from SMILES
 
         if self._rdkit_mol is None:
@@ -234,10 +234,10 @@ class Complex:
                     continue  # discard the complex if the bi-dentated coordination bonds length is not satisfied
 
                 for i in range(len(self._ligands)):
-                    if self._bidenated_binding_atoms[0] in self.get_ligand_atom_index(i):
+                    if self._bidenated_binding_atoms[0][0] in self.get_ligand_atom_index(i):
                         bidentated_atom_pos = com.positions[self.get_ligand_atom_index(i)]
                         bidentated_atom_dst = np.linalg.norm(bidentated_atom_pos, axis=1)
-                        if min(bidentated_atom_dst) < bidentated_length * 0.7:
+                        if min(bidentated_atom_dst) < min(bidentated_length) * 0.7:
                             continue  # discard the complex if the ligands are too close to center atom
 
 
