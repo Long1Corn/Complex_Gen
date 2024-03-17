@@ -261,8 +261,6 @@ class Complex:
             max_min_dst = max(dst_list)
             idx = dst_list.index(max_min_dst)
 
-            print(dst_list)
-
             self.complex = com_list[idx]
 
         return self.complex
