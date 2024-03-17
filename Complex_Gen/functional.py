@@ -71,8 +71,10 @@ def find_near_center(structure: Atoms, anchor: np.ndarray = np.ndarray([0, 0, 0]
     # Extract atom indices of the closest atoms
     nearest_atom_indices = [x[1] for x in sorted_dst[1:num + 1]]
 
-    # get the geometric center of the nearest atoms
-    center = np.array(structure[nearest_atom_indices].get_positions().mean(axis=0))
+    # get the center by the unit vector of the sum of the positions of the nearest atoms
+    unit_vector_list = [unit_vector(structure[i].position - anchor) for i in nearest_atom_indices]
+
+    center = np.sum(unit_vector_list, axis=0)
 
     return center
 
@@ -127,7 +129,7 @@ def find_ligand_pos(structure: Atoms, anchor: np.ndarray, site: str or [str], de
             ligand_pos = v_normal
         else:  # bind to one atom site
             ligand_center = find_near_center(structure, anchor, 3)
-            ligand_pos = ligand_center - anchor
+            ligand_pos = ligand_center
 
     elif dentate == 2:  # bind to bi-dentate
         # find the vector on plane (v1,v2) and perpendicular to v_a12
