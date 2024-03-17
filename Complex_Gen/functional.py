@@ -59,6 +59,24 @@ def find_mol_center(structure: Atoms) -> np.ndarray:
     return center
 
 
+def find_near_center(structure: Atoms, anchor: np.ndarray = np.ndarray([0, 0, 0]), num: int = 3) -> np.ndarray:
+    # find geometric center of [num] nearest atoms to the anchor in a molecule (ase atom)
+    dst = []
+    for idx, atom in enumerate(structure):
+        dst.append((np.linalg.norm(atom.position - anchor), idx))
+
+    # Sort by distance, but keep the atom index information
+    sorted_dst = sorted(dst, key=lambda x: x[0])
+
+    # Extract atom indices of the closest atoms
+    nearest_atom_indices = [x[1] for x in sorted_dst[1:num + 1]]
+
+    # get the geometric center of the nearest atoms
+    center = np.array(structure[nearest_atom_indices].get_positions().mean(axis=0))
+
+    return center
+
+
 def find_near_atoms(structure: Atoms, anchor: np.ndarray, num: int) -> np.ndarray:
     # find the index of nearest N atoms to the anchor in a molecule (ase atom) excluding hydrogen atoms
     dst = []
@@ -108,7 +126,7 @@ def find_ligand_pos(structure: Atoms, anchor: np.ndarray, site: str or [str], de
 
             ligand_pos = v_normal
         else:  # bind to one atom site
-            ligand_center = find_mol_center(structure)
+            ligand_center = find_near_center(structure, anchor, 3)
             ligand_pos = ligand_center - anchor
 
     elif dentate == 2:  # bind to bi-dentate
@@ -180,7 +198,7 @@ def get_bond_radii(atom: str) -> float:
     if atom == "=":
         dst = 0.7  # assuming bond length of pi site is 0.7 A
     elif atom == "ring":
-        dst = 0.9 # assuming bond length of ring site is 1.0 A
+        dst = 0.9  # assuming bond length of ring site is 1.0 A
     else:
         s = Atoms(atom).numbers[0]
         dst = covalent_radii[s]
@@ -391,7 +409,7 @@ def xtb_opt(structure: Atoms, fmax: float = 0.05, max_step: int = 200, fix_idx: 
         structure.set_constraint(constraint)
 
     # Setting up the calculator
-    calculator = XTB(method='GFN2-xTB', gfn_version=2, charge=0, scf_max_cycles=200, ) # Choose your method
+    calculator = XTB(method='GFN2-xTB', gfn_version=2, charge=0, scf_max_cycles=200, )  # Choose your method
     structure.set_calculator(calculator)
 
     # Optimization
@@ -414,7 +432,7 @@ def check_atoms_distance(structure: Atoms, ligand_list: [Atoms]) -> (float, floa
 
     # check if any two ligands in the structure is too close
     ligand_pos_list = [ligand.get_positions() for ligand in ligand_list]
-    ligand_pos_list.append(np.array([[0, 0, 0]])) # add center atom
+    ligand_pos_list.append(np.array([[0, 0, 0]]))  # add center atom
 
     ligand_dst_list = []
 
@@ -425,7 +443,7 @@ def check_atoms_distance(structure: Atoms, ligand_list: [Atoms]) -> (float, floa
 
     # sum the smallest 3 distances
     ligand_dst_list.sort()
-    min_dst = np.mean(ligand_dst_list[:min(3, len(ligand_dst_list))])
+    min_dst = np.mean(ligand_dst_list[:min(1, len(ligand_dst_list))])
 
     # check min distance between atoms and center (0,0,0)
     pos = structure.get_positions()

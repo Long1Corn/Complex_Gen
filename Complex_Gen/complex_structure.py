@@ -216,27 +216,35 @@ class Complex:
                 com = com + ligand_coord
                 ligand_coord_list.append(ligand_coord)
 
-            # check if the ligands are too close to each other and bi-dentated coordination bonds length
+            # check structure
             if self.base_liagnds is not None:
                 for ligand in self.base_liagnds:
                     ligand_coord_list.append(ligand._structure)
+
             min_dst, min_dst_center = check_atoms_distance(com, ligand_coord_list)
 
             if len(self._bidenated_binding_atoms) > 0:
-                bidentated_atom_pos = [np.mean(com.positions[atom], axis=0) for atom in self._bidenated_binding_atoms]
-                bidentated_length = np.linalg.norm(bidentated_atom_pos, axis=1)
+                bidentated_atom_dir = [np.mean(com.positions[atom], axis=0) for atom in self._bidenated_binding_atoms]
+                bidentated_length = np.linalg.norm(bidentated_atom_dir, axis=1)
                 bidentated_bond_dst_list = np.array(bond_dst_list)[self._bidenated_ligand]
 
-                if np.all(bidentated_length < bidentated_bond_dst_list - tol_bond_dst) and \
-                        np.all(bidentated_length > bidentated_bond_dst_list + tol_bond_dst):
-                    continue
+                # bi-dentated coordination bonds length
+                if np.any(bidentated_length < bidentated_bond_dst_list - tol_bond_dst) and \
+                        np.any(bidentated_length > bidentated_bond_dst_list + tol_bond_dst):
+                    continue  # discard the complex if the bi-dentated coordination bonds length is not satisfied
 
+            # if the ligands are too close to each other and
             if min_dst < tol_min_dst:
-                continue
+                continue  # discard the complex if the ligands are too close to each other
 
             # append valid complex structure
             com_list.append(com)
             dst_list.append(min_dst)
+
+            print(f"Attempt {attempt + 1}/{max_attempt}, min_dst: {min_dst:.2f}A, min_dst_center: {min_dst_center:.2f}A")
+
+            if len(com_list) > 5:
+                break  # stop the loop if there are more than 10 valid complex
 
         if len(com_list) == 0:
             self.complex = None
@@ -245,8 +253,10 @@ class Complex:
                   f" and tol_min_dst {tol_min_dst}A")
         else:
             # get the max min_dst and idx
-            min_min_dst = max(dst_list)
-            idx = dst_list.index(min_min_dst)
+            max_min_dst = max(dst_list)
+            idx = dst_list.index(max_min_dst)
+
+            print(dst_list)
 
             self.complex = com_list[idx]
 
