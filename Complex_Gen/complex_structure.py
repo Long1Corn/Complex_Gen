@@ -233,12 +233,12 @@ class Complex:
                         np.any(bidentated_length > bidentated_bond_dst_list + tol_bond_dst):
                     continue  # discard the complex if the bi-dentated coordination bonds length is not satisfied
 
-            # if atoms in bidentated ligands are too close to center atom
-            bidentated_atom_pos = [com.positions[atom] for atom in self._bidenated_binding_atoms]
-            bidentated_atom_dst = np.linalg.norm(bidentated_atom_pos, axis=1)
-            min_bid_dst = bidentated_atom_dst.min()
-            if min_bid_dst < tol_min_dst * 0.7:
-                continue
+                # if atoms in bidentated ligands are too close to center atom
+                bidentated_atom_pos = [com.positions[atom] for atom in self._bidenated_binding_atoms]
+                bidentated_atom_dst = np.linalg.norm(bidentated_atom_pos, axis=1)
+                min_bid_dst = bidentated_atom_dst.min()
+                if min_bid_dst < min(bidentated_bond_dst_list) * 0.7:
+                    continue
 
             # if the ligands are too close to each other and
             if min_dst < tol_min_dst:
