@@ -164,10 +164,13 @@ class Complex:
 
             num = num + len(ligand._structure)
 
-    def generate_complex(self, max_attempt=1000, tol_min_dst=1.5, tol_bond_dst=0.2) -> Atoms or None:
+    def generate_complex(self, max_attempt=1000, tol_min_dst=1.5, tol_bond_dst=0.2, max_structures=5) -> Atoms or None:
         """
         Generate the initial complex structure.
         :param max_attempt: maximum number of attempts to generate the complex, also control number of conformers
+        :param tol_min_dst: minimum distance between ligands
+        :param tol_bond_dst: tolerance of bond distance
+        :param max_structures: maximum number of valid complex structures
         :return: complex structure
         """
 
@@ -255,7 +258,7 @@ class Complex:
             com_list.append(com)
             dst_list.append(min_3_dst)
 
-            if len(com_list) > 5:
+            if len(com_list) > max_structures:
                 break  # stop the loop if there are more than 10 valid complex
 
         if len(com_list) == 0:
