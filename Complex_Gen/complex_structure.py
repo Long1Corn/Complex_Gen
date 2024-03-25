@@ -14,7 +14,8 @@ class Ligand:
     A class to represent a ligand.
     """
 
-    def __init__(self, binding_sites_idx: [[int]], sites_loc_idx: [int], smiles: str = None, structure: Atoms = None):
+    def __init__(self, binding_sites_idx: [[int]], sites_loc_idx: [int], smiles: str = None, structure: Atoms = None,
+                 max_conformers=300):
         """
         :param smiles: SMILES string of the ligand
         :param structure: ASE Atoms object of the ligand (provide either one of the two)
@@ -28,6 +29,7 @@ class Ligand:
         self._smiles = smiles
         self._structure: Atoms = structure
         self._rdkit_mol = None
+        self.max_conformers = max_conformers
 
         if len(self._sites_loc_idx) == 1:
             self.dentate = 1
@@ -36,11 +38,11 @@ class Ligand:
 
         self._gen_conformer()
 
-    def _gen_conformer(self, max_conformers=300):
+    def _gen_conformer(self):
 
         # get ligand structure (ASE ATOMS) from smiles or structure
         if self._smiles is not None:
-            self._get_structure_from_smiles(max_conformers=max_conformers)
+            self._get_structure_from_smiles(max_conformers=self.max_conformers)
 
         # get binding sites
         if self.dentate == 1:  # mono-dentate
@@ -239,7 +241,6 @@ class Complex:
                         bidentated_atom_dst = np.linalg.norm(bidentated_atom_pos, axis=1)
                         if min(bidentated_atom_dst) < min(bidentated_length) * 0.7:
                             continue  # discard the complex if the ligands are too close to center atom
-
 
             # if the ligands are too close to each other and
             if min_dst < tol_min_dst:
