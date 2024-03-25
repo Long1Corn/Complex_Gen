@@ -226,7 +226,7 @@ class Complex:
                 for ligand in self.base_liagnds:
                     ligand_coord_list.append(ligand._structure)
 
-            min_dst, min_3_dst, min_dst_center = check_atoms_distance(com, ligand_coord_list)
+            min_dst, min_3_dst, min_dst_center = check_atoms_distance(com, ligand_coord_list, self._ligands)
 
             if len(self._bidenated_binding_atoms) > 0:
                 bidentated_atom_dir = [np.mean(com.positions[atom], axis=0) for atom in self._bidenated_binding_atoms]
