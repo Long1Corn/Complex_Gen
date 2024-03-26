@@ -158,18 +158,21 @@ class Complex:
         num = 1
         for n, ligand in enumerate(self._ligands):
             if ligand.dentate == 2:
-                self._bidenated_ligand.extend([n, n])
+                self._bidenated_ligand.append([n])
+                binding_sites_idx = []
                 for sites_idx in ligand._binding_sites_idx:
-                    self._bidenated_binding_atoms.append([site + num for site in sites_idx])
+                    binding_sites_idx.extend([site + num for site in sites_idx])
+                self._bidenated_binding_atoms.append(binding_sites_idx)
 
             num = num + len(ligand._structure)
 
-    def generate_complex(self, max_attempt=1000, tol_min_dst=1.5, tol_bond_dst=0.2, max_structures=5) -> Atoms or None:
+    def generate_complex(self, max_attempt=1000, tol_min_dst=1.5, tol_bond_dst=0.2, tol_bond_andgle=15, max_structures=5) -> Atoms or None:
         """
         Generate the initial complex structure.
         :param max_attempt: maximum number of attempts to generate the complex, also control number of conformers
         :param tol_min_dst: minimum distance between ligands, absolute value angstrom
         :param tol_bond_dst: tolerance of bond distance, fraction of the bond distance
+        :param tol_bond_andgle: tolerance of bond angle, degree
         :param max_structures: maximum number of valid complex structures
         :return: complex structure
         """
@@ -228,15 +231,26 @@ class Complex:
 
             min_dst, min_3_dst, min_dst_center = check_atoms_distance(com, ligand_coord_list, self._ligands)
 
-            if len(self._bidenated_binding_atoms) > 0:
-                bidentated_atom_dir = [np.mean(com.positions[atom], axis=0) for atom in self._bidenated_binding_atoms]
+            for i, bidenated_binding_atoms in enumerate(self._bidenated_binding_atoms):
+                bidentated_atom_dir = [com.positions[atom] for atom in bidenated_binding_atoms]
                 bidentated_length = np.linalg.norm(bidentated_atom_dir, axis=1)
-                bidentated_bond_dst_list = np.array(bond_dst_list)[self._bidenated_ligand]
+                bidentated_bond_dst_list = np.array(bond_dst_list)[self._bidenated_ligand[i]*2]
+                bidentated_bond_vector = np.array(bidentated_atom_dir)
+
+                coord_site_index = [self._ligands[i]._sites_loc_idx for i in self._bidenated_ligand[i]]
+                coord_site_vector = np.array([center_geo[i] for i in coord_site_index]).squeeze()
+                vector_diff_degree = np.arccos(np.sum(bidentated_bond_vector* coord_site_vector, axis=1) /
+                            (np.linalg.norm(bidentated_bond_vector, axis=1) * np.linalg.norm(coord_site_vector, axis=1))) * 180 / np.pi
+
 
                 # bi-dentated coordination bonds length
                 if np.any(bidentated_length < bidentated_bond_dst_list * (1 - tol_bond_dst)) or \
                         np.any(bidentated_length > bidentated_bond_dst_list * (1 + tol_bond_dst)):
                     continue  # discard the complex if the bi-dentated coordination bonds length is not satisfied
+
+                # bi-dentated coordination bonds angle
+                if np.any(vector_diff_degree > tol_bond_andgle):
+                    continue # discard the complex if the bi-dentated coordination bonds angle is not satisfied
 
                 too_close = False
                 for i in range(len(self._ligands)):
