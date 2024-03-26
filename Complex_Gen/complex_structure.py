@@ -168,8 +168,8 @@ class Complex:
         """
         Generate the initial complex structure.
         :param max_attempt: maximum number of attempts to generate the complex, also control number of conformers
-        :param tol_min_dst: minimum distance between ligands
-        :param tol_bond_dst: tolerance of bond distance
+        :param tol_min_dst: minimum distance between ligands, absolute value angstrom
+        :param tol_bond_dst: tolerance of bond distance, fraction of the bond distance
         :param max_structures: maximum number of valid complex structures
         :return: complex structure
         """
@@ -234,8 +234,8 @@ class Complex:
                 bidentated_bond_dst_list = np.array(bond_dst_list)[self._bidenated_ligand]
 
                 # bi-dentated coordination bonds length
-                if np.any(bidentated_length < bidentated_bond_dst_list - tol_bond_dst) and \
-                        np.any(bidentated_length > bidentated_bond_dst_list + tol_bond_dst):
+                if np.any(bidentated_length < bidentated_bond_dst_list * (1 - tol_bond_dst)) or \
+                        np.any(bidentated_length > bidentated_bond_dst_list * (1 + tol_bond_dst)):
                     continue  # discard the complex if the bi-dentated coordination bonds length is not satisfied
 
                 too_close = False
@@ -244,8 +244,8 @@ class Complex:
                         bidentated_atom_pos = com.positions[self.get_ligand_atom_index(i)]
                         bidentated_atom_dst = np.linalg.norm(bidentated_atom_pos, axis=1)
                         min_bidentated_atom_dst = np.min(bidentated_atom_dst)
-                        if min_bidentated_atom_dst < min(bidentated_length) * 0.7:
-                            too_close =True# discard the complex if the ligands are too close to center atom
+                        if min_bidentated_atom_dst < min(bidentated_length) * (1 - tol_bond_dst):
+                            too_close = True  # discard the complex if the ligands are too close to center atom
                             break
                 if too_close:
                     continue

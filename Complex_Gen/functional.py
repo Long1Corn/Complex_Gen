@@ -198,7 +198,7 @@ def get_bond_dst(atom1: str, atom2: str or [str], num_dentate: int) -> float:
 
 def get_bond_radii(atom: str) -> float:
     if atom == "=":
-        dst = 0.8  # assuming bond length of pi site is 0.8 A
+        dst = 0.7  # assuming bond length of pi site is 0.6 A
     elif atom == "ring":
         dst = 1.1  # assuming bond length of ring site is 1.1 A
     else:
