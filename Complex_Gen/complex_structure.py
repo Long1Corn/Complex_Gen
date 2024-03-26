@@ -264,7 +264,7 @@ class Complex:
         if len(com_list) == 0:
             self.complex = None
             print(f"Failed to generate complex after {max_attempt} attempts")
-            print(f"Cannot find a good geometry given current ligand to satisfy the tol_bond_dst {tol_bond_dst}A,"
+            print(f"Cannot find a good geometry given current ligand to satisfy the tol_bond_dst {tol_bond_dst},"
                   f" and tol_min_dst {tol_min_dst}A")
         else:
             # get the max min_dst and idx
