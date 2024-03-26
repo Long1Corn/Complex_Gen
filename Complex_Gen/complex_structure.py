@@ -15,12 +15,14 @@ class Ligand:
     """
 
     def __init__(self, binding_sites_idx: [[int]], sites_loc_idx: [int], smiles: str = None, structure: Atoms = None,
-                 max_conformers=300):
+                 max_conformers=300, mirror=True):
         """
         :param smiles: SMILES string of the ligand
         :param structure: ASE Atoms object of the ligand (provide either one of the two)
         :param binding_sites_idx: A list of atom indices of the binding sites
         :param sites_loc_idx: A list of atom indices of the sites location
+        :param max_conformers: maximum number of conformers to generate
+        :param mirror: whether to mirror the ligand when generating conformers
         """
         self._structure = None
         self._rdkit_mol = None
@@ -30,6 +32,7 @@ class Ligand:
         self._structure: Atoms = structure
         self._rdkit_mol = None
         self.max_conformers = max_conformers
+        self.mirror = mirror
 
         if len(self._sites_loc_idx) == 1:
             self.dentate = 1
@@ -72,7 +75,7 @@ class Ligand:
         self._anchor = self._find_anchor(self.dentate)
         self._direction = self._find_ligand_pos()
 
-    def _get_structure_from_smiles(self, max_conformers=400, mirror=False):
+    def _get_structure_from_smiles(self, max_conformers=400):
         # Create RDKit molecule from SMILES
 
         if self._rdkit_mol is None:
@@ -98,12 +101,10 @@ class Ligand:
         ase_atoms = Atoms(numbers=atomic_numbers, positions=coords)
 
         # 50% chance to mirror the ligand
-        if mirror:
+        if self.mirror:
             if random.random() > 0.5:
-                ase_atoms.positions[:, 0] = -ase_atoms.positions[:, 0]
-
-        # randomly rotate the ligand
-        # ase_atoms.rotate(random.random() * 360, 'z')
+                # inverse and x and y coordinates
+                ase_atoms.positions[:, :2] = -ase_atoms.positions[:, :2]
 
         self._structure = ase_atoms
 
@@ -166,7 +167,7 @@ class Complex:
 
             num = num + len(ligand._structure)
 
-    def generate_complex(self, max_attempt=1000, tol_min_dst=1.5, tol_bond_dst=0.2, tol_bond_andgle=15,
+    def generate_complex(self, max_attempt=1000, tol_min_dst=1.5, tol_bond_dst=0.2, tol_bond_andgle=10,
                          max_structures=5) -> Atoms or None:
         """
         Generate the initial complex structure.
