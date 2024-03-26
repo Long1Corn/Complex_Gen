@@ -162,7 +162,7 @@ class Complex:
                 self._bidenated_ligand.append([n])
                 binding_sites_idx = []
                 for sites_idx in ligand._binding_sites_idx:
-                    binding_sites_idx.extend([site + num for site in sites_idx])
+                    binding_sites_idx.append([site + num for site in sites_idx])
                 self._bidenated_binding_atoms.append(binding_sites_idx)
 
             num = num + len(ligand._structure)
@@ -237,7 +237,7 @@ class Complex:
             for i, bidenated_binding_atoms in enumerate(self._bidenated_binding_atoms):
 
                 # bi-dentated coordination bonds length
-                bidentated_atom_dir = [com.positions[atom] for atom in bidenated_binding_atoms]
+                bidentated_atom_dir = [np.mean(com.positions[atom], axis=0) for atom in bidenated_binding_atoms]
                 bidentated_length = np.linalg.norm(bidentated_atom_dir, axis=1)
                 bidentated_bond_dst_list = np.array(bond_dst_list)[self._bidenated_ligand[i] * 2]
 
