@@ -96,7 +96,7 @@ def find_near_atoms(structure: Atoms, anchor: np.ndarray, num: int) -> np.ndarra
     return np.array(nearest_atom_indices)
 
 
-def find_ligand_pos(structure: Atoms, anchor: np.ndarray, site: str or [str], dentate: int) -> np.ndarray:
+def find_ligand_pos(structure: Atoms, anchor: np.ndarray, site: str or [str], dentate: int, anchor_connect_num: int) -> np.ndarray:
     """
     Find the directional vector of a ligand using anchor and the geometric center of the ligand.
     :param structure: ligand structure
@@ -128,7 +128,7 @@ def find_ligand_pos(structure: Atoms, anchor: np.ndarray, site: str or [str], de
 
             ligand_pos = v_normal
         else:  # bind to one atom site
-            ligand_center = find_near_center(structure, anchor, 3)
+            ligand_center = find_near_center(structure, anchor, anchor_connect_num)
             ligand_pos = ligand_center
 
     elif dentate == 2:  # bind to bi-dentate

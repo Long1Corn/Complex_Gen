@@ -15,7 +15,7 @@ class Ligand:
     """
 
     def __init__(self, binding_sites_idx: [[int]], sites_loc_idx: [int], smiles: str = None, structure: Atoms = None,
-                 max_conformers=500, mirror=False):
+                 max_conformers=500, mirror=False, anchor_connect_num=3):
         """
         :param smiles: SMILES string of the ligand
         :param structure: ASE Atoms object of the ligand (provide either one of the two)
@@ -33,6 +33,7 @@ class Ligand:
         self._rdkit_mol = None
         self.max_conformers = max_conformers
         self.mirror = mirror
+        self.anchor_connect_num = anchor_connect_num
 
         if len(self._sites_loc_idx) == 1:
             self.dentate = 1
@@ -122,7 +123,7 @@ class Ligand:
 
     def _find_ligand_pos(self) -> np.ndarray:
         """try to find the name of the binding site and the geometric center of the ligand"""
-        ligand_pos = find_ligand_pos(self._structure, self._anchor, self._binding_sites, self.dentate)
+        ligand_pos = find_ligand_pos(self._structure, self._anchor, self._binding_sites, self.dentate, self.anchor_connect_num)
 
         return ligand_pos
 
