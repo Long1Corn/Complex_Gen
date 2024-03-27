@@ -441,9 +441,7 @@ def check_atoms_distance(structure: Atoms, ligand_list: [Atoms], ligands) -> (fl
     for i in range(len(ligand_pos_list)):
         for j in range(i + 1, len(ligand_pos_list)):
             dst = min_distance_between_two_group_of_points(ligand_pos_list[i], ligand_pos_list[j])
-            # for bidendate ligand, the weight should be 2
-            if ligands[i].dentate == 2:
-                dst = dst * 2
+
             ligand_dst_list.append(dst)
 
 
