@@ -15,7 +15,7 @@ class Ligand:
     """
 
     def __init__(self, binding_sites_idx: [[int]], sites_loc_idx: [int], smiles: str = None, structure: Atoms = None,
-                 max_conformers=300, mirror=True):
+                 max_conformers=500, mirror=False):
         """
         :param smiles: SMILES string of the ligand
         :param structure: ASE Atoms object of the ligand (provide either one of the two)
@@ -168,7 +168,7 @@ class Complex:
             num = num + len(ligand._structure)
 
     def generate_complex(self, max_attempt=1000, tol_min_dst=1.5, tol_bond_dst=0.2, tol_bond_andgle=10,
-                         max_structures=5) -> Atoms or None:
+                         max_structures=10) -> Atoms or None:
         """
         Generate the initial complex structure.
         :param max_attempt: maximum number of attempts to generate the complex, also control number of conformers
