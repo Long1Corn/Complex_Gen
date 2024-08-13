@@ -105,10 +105,14 @@ def find_ligand_pos(structure: Atoms, anchor: np.ndarray, site: str or [str], de
     :param dentate:
     :return: 3d directional vector of the ligand
     """
+
+    ligand_pos = None
+    bi_ligand_pos = None
+
     if dentate == 1:  # mono-dentate
 
         if len(structure) == 1:  # ligand is single atom
-            ligand_pos = np.array([0, 0, 1])
+            ligand_pos = np.array([[0, 0, 1]])
 
         elif site == "ring" or site == "=":  # bind to ring
             # find the plane of the ring or pi bond
@@ -126,45 +130,85 @@ def find_ligand_pos(structure: Atoms, anchor: np.ndarray, site: str or [str], de
 
             v_normal = v_normal * (np.sign(np.dot(v_normal, v_ligand)) + 1e-2)
 
-            ligand_pos = v_normal
+            ligand_pos = np.expand_dims(v_normal, axis=0)
         else:  # bind to one atom site
             ligand_center = find_near_center(structure, anchor, anchor_connect_num)
-            ligand_pos = ligand_center
+            ligand_pos = np.expand_dims(ligand_center, axis=0)
 
     elif dentate == 2:  # bind to bi-dentate
         # find the vector on plane (v1,v2) and perpendicular to v_a12
         anchor1 = anchor[0]
         anchor2 = anchor[1]
-        anchors_center = (anchor1 + anchor2) / 2
+        if site[0] == "ring" or site[0] == "=":
+
+            near_atoms_idx = find_near_atoms(structure, anchor1, 3)
+
+            v1 = structure[near_atoms_idx[0]].position - structure[near_atoms_idx[1]].position
+            v2 = structure[near_atoms_idx[0]].position - structure[near_atoms_idx[2]].position
+
+            # find the normal vector of the ring plane described by v1, v2
+            v_normal = np.cross(v1, v2)
+
+            # make v_normal and ligand the same direction
+            ligand_center = find_mol_center(structure)
+            v_ligand = ligand_center - anchor
+
+            v_normal = v_normal * (np.sign(np.dot(v_normal, v_ligand)) + 1e-2)
+            u1 = v_normal
+        else:
+            anchor1_dir = find_near_center(structure, anchor1, anchor_connect_num)
+            u1 = anchor1_dir - anchor1
+
+        if site[1] == "ring" or site[1] == "=":
+
+            near_atoms_idx = find_near_atoms(structure, anchor2, 3)
+
+            v1 = structure[near_atoms_idx[0]].position - structure[near_atoms_idx[1]].position
+            v2 = structure[near_atoms_idx[0]].position - structure[near_atoms_idx[2]].position
+
+            # find the normal vector of the ring plane described by v1, v2
+            v_normal = np.cross(v1, v2)
+
+            # make v_normal and ligand the same direction
+            ligand_center = find_mol_center(structure)
+            v_ligand = ligand_center - anchor
+
+            v_normal = v_normal * (np.sign(np.dot(v_normal, v_ligand)) + 1e-2)
+            u2 = v_normal
+        else:
+            anchor2_dir = find_near_center(structure, anchor2, anchor_connect_num)
+            u2 = anchor2_dir - anchor2
 
         # 50% using plane, 50% using ligand center
-        rand_num = np.random.rand()
-        if rand_num > 0.5:
-            near_atoms_idx1 = find_near_atoms(structure, anchor1, 2)
-            near_atoms_idx2 = find_near_atoms(structure, anchor2, 2)
+        # rand_num = np.random.rand()
+        # if rand_num > 0.5:
+        #     near_atoms_idx1 = find_near_atoms(structure, anchor1, 2)
+        #     near_atoms_idx2 = find_near_atoms(structure, anchor2, 2)
+        #
+        #     v1 = structure[near_atoms_idx1[1]].position - anchor1
+        #     v2 = structure[near_atoms_idx2[1]].position - anchor2
+        # else:
+        #     ligand_center = find_mol_center(structure)
+        #     v1 = ligand_center - anchor1
+        #     v2 = ligand_center - anchor2
 
-            v1 = structure[near_atoms_idx1[1]].position - anchor1
-            v2 = structure[near_atoms_idx2[1]].position - anchor2
-        else:
-            ligand_center = find_mol_center(structure)
-            v1 = ligand_center - anchor1
-            v2 = ligand_center - anchor2
+        # v_a12 = anchor1 - anchor2
+        #
+        # # Find the normal vector to the plane
+        # n = np.cross(v1, v2)
+        #
+        # # Find the desired vector
+        # u = np.cross(n, v_a12)
+        #
+        # # make v_normal and ligand the same direction
+        # ligand_center = find_mol_center(structure)
+        # v_ligand = ligand_center - anchors_center
+        #
+        # u = u * (np.sign(np.dot(u, v_ligand)) + 1e-2)
 
-        v_a12 = anchor1 - anchor2
+        # get the bond direction of the two anchor atoms
 
-        # Find the normal vector to the plane
-        n = np.cross(v1, v2)
-
-        # Find the desired vector
-        u = np.cross(n, v_a12)
-
-        # make v_normal and ligand the same direction
-        ligand_center = find_mol_center(structure)
-        v_ligand = ligand_center - anchors_center
-
-        u = u * (np.sign(np.dot(u, v_ligand)) + 1e-2)
-
-        ligand_pos = u
+        ligand_pos = np.array([u1, u2])
 
     return ligand_pos
 
@@ -460,3 +504,36 @@ def check_atoms_distance(structure: Atoms, ligand_list: [Atoms], ligands) -> (fl
     min_dst_center = np.min(dst_center)
 
     return min_dst, min_3_dst, min_dst_center
+
+
+def calculate_dihedral_angle(A, B, C, D):
+    # Convert points to numpy arrays
+    A = np.array(A)
+    B = np.array(B)
+    C = np.array(C)
+    D = np.array(D)
+
+    # Define vectors
+    AB = B - A
+    BC = C - B
+    CD = D - C
+
+    # Calculate normal vectors
+    normal1 = np.cross(AB, BC)
+    normal2 = np.cross(BC, CD)
+
+    # Normalize the normal vectors
+    normal1 /= np.linalg.norm(normal1)
+    normal2 /= np.linalg.norm(normal2)
+
+    # Calculate the angle between the normals
+    angle = np.arccos(np.clip(np.dot(normal1, normal2), -1.0, 1.0))
+
+    # Calculate the sign of the angle
+    if np.dot(np.cross(normal1, normal2), BC) > 0:
+        angle = -angle
+
+    # Convert angle to degrees
+    angle_degrees = np.degrees(angle)
+
+    return angle_degrees

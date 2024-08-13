@@ -6,7 +6,8 @@ from rdkit import Chem
 from rdkit.Chem import AllChem
 
 from Complex_Gen.functional import get_bond_dst, find_ligand_pos, rodrigues_rotation_matrix, \
-    rotate_bidendate_angel, rotate_point_about_vector, check_atoms_distance, Center_Geo_Type
+    rotate_bidendate_angel, rotate_point_about_vector, check_atoms_distance, Center_Geo_Type, calculate_dihedral_angle, \
+find_near_center
 
 
 class Ligand:
@@ -15,7 +16,7 @@ class Ligand:
     """
 
     def __init__(self, binding_sites_idx: [[int]], sites_loc_idx: [int], smiles: str = None, structure: Atoms = None,
-                 max_conformers=500, mirror=False, anchor_connect_num=3):
+                 max_conformers=1000, mirror=True, anchor_connect_num=3):
         """
         :param smiles: SMILES string of the ligand
         :param structure: ASE Atoms object of the ligand (provide either one of the two)
@@ -24,13 +25,12 @@ class Ligand:
         :param max_conformers: maximum number of conformers to generate
         :param mirror: whether to mirror the ligand when generating conformers
         """
-        self._structure = None
+        self._structure = structure
         self._rdkit_mol = None
         self._binding_sites_idx = binding_sites_idx
         self._sites_loc_idx = sites_loc_idx
         self._smiles = smiles
-        self._structure: Atoms = structure
-        self._rdkit_mol = None
+
         self.max_conformers = max_conformers
         self.mirror = mirror
         self.anchor_connect_num = anchor_connect_num
@@ -40,10 +40,10 @@ class Ligand:
         elif len(self._sites_loc_idx) == 2:
             self.dentate = 2
 
+
         self._gen_conformer()
 
     def _gen_conformer(self):
-
         # get ligand structure (ASE ATOMS) from smiles or structure
         if self._smiles is not None:
             self._get_structure_from_smiles(max_conformers=self.max_conformers)
@@ -74,9 +74,9 @@ class Ligand:
         # get anchor and direction
 
         self._anchor = self._find_anchor(self.dentate)
-        self._direction = self._find_ligand_pos()
+        self._direction = self._find_ligand_pos() # [N, 3]
 
-    def _get_structure_from_smiles(self, max_conformers=400):
+    def _get_structure_from_smiles(self, max_conformers=1000):
         # Create RDKit molecule from SMILES
 
         if self._rdkit_mol is None:
@@ -88,11 +88,15 @@ class Ligand:
             AllChem.EmbedMultipleConfs(mol, numConfs=max_conformers, params=AllChem.ETKDG())
             self._rdkit_mol = mol
 
+            conformer_id = 0
+        else:
+            conformer_id = random.randint(0, max_conformers - 1)
+
         # Extract atomic numbers
         atomic_numbers = [atom.GetAtomicNum() for atom in self._rdkit_mol.GetAtoms()]
 
         # Get a random conformer
-        conformer = self._rdkit_mol.GetConformer(random.randint(0, max_conformers - 1))
+        conformer = self._rdkit_mol.GetConformer(conformer_id)
 
         # Extract coordinates
         coords = [conformer.GetAtomPosition(i) for i in range(self._rdkit_mol.GetNumAtoms())]
@@ -168,8 +172,9 @@ class Complex:
 
             num = num + len(ligand._structure)
 
-    def generate_complex(self, max_attempt=1000, tol_min_dst=1.5, tol_bond_dst=0.2, tol_bond_andgle=10,
-                         max_structures=10) -> Atoms or None:
+    def generate_complex(self, max_attempt=1000, tol_min_dst=1.5, tol_bond_dst=0.2, tol_bond_andgle=15,
+                         max_structures=5, bidenated_dihedral_threshold=30
+                         ) -> Atoms or None:
         """
         Generate the initial complex structure.
         :param max_attempt: maximum number of attempts to generate the complex, also control number of conformers
@@ -195,9 +200,15 @@ class Complex:
             bond_dst_list = []
             ligand_coord_list = []
 
+            discard = False
+
             for i in range(len(self._ligands)):
 
-                self._ligands[i]._gen_conformer()
+                try: # generate conformer for ligand, if failed, continue to the next conformer
+                    self._ligands[i]._gen_conformer()
+                except:
+                    discard = True
+                    break
 
                 num_dentate = self._ligands[i].dentate
 
@@ -210,7 +221,7 @@ class Complex:
                     # get angel between two binding sites
                     v1 = center_geo[self._ligands[i]._sites_loc_idx[0]]
                     v2 = center_geo[self._ligands[i]._sites_loc_idx[1]]
-                    cos_theta = np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2) + 1e-2)
+                    cos_theta = np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2) + 1e-3)
                     theta_rad = np.arccos(cos_theta)
                     angel_factor = np.cos(theta_rad / 2)
 
@@ -222,10 +233,19 @@ class Complex:
                 bond_dst_list.append(bond_dst)
 
                 # get ligand position and combine the ligand
-                ligand_coord = self.place_ligand(self._ligands[i], direction, bond_dst * angel_factor)
+                ligand_coord = self.place_ligand(self._ligands[i], direction, bond_dst * angel_factor,
+                                                 bidenated_dihedral_threshold=bidenated_dihedral_threshold)
+
+                if ligand_coord is None: # discard the ligand if it cannot be placed
+                    discard = True
+                    break
+
                 self._ligands[i]._structure = ligand_coord
                 com = com + ligand_coord
                 ligand_coord_list.append(ligand_coord)
+
+            if discard:
+                continue
 
             # check structure
             if self.base_liagnds is not None:
@@ -233,9 +253,13 @@ class Complex:
                     ligand_coord_list.append(ligand._structure)
 
             min_dst, min_3_dst, min_dst_center = check_atoms_distance(com, ligand_coord_list, self._ligands)
+            # if the ligands are too close to each other and
+            if min_dst < tol_min_dst:
+                continue  # discard the complex if the ligands are too close to each other
 
-            discard = False
             for i, bidenated_binding_atoms in enumerate(self._bidenated_binding_atoms):
+
+                ligand_index = self._bidenated_ligand[i][0]
 
                 # bi-dentated coordination bonds length
                 bidentated_atom_dir = [np.mean(com.positions[atom], axis=0) for atom in bidenated_binding_atoms]
@@ -250,10 +274,22 @@ class Complex:
                 # bi-dentated coordination bonds angle
                 coord_site_index = [self._ligands[i]._sites_loc_idx for i in self._bidenated_ligand[i]]
                 coord_site_vector = np.array([center_geo[i] for i in coord_site_index]).squeeze()
-                bidentated_bond_vector = np.array(bidentated_atom_dir)
+
+                bidentated_bond_vector = []
+                for bidenated_binding_atom in bidenated_binding_atoms:
+
+                    bidentated_atom_pos = com.positions[bidenated_binding_atom]
+                    bidentated_bond_pos = find_near_center(com[self.get_ligand_atom_index(ligand_index)],
+                                                           bidentated_atom_pos,
+                                                           self._ligands[ligand_index].anchor_connect_num)
+                    bidentated_bond_vector.append(bidentated_bond_pos)
+
+                bidentated_bond_vector = np.array(bidentated_bond_vector).squeeze()
+
                 vector_diff_degree = np.arccos(np.sum(bidentated_bond_vector * coord_site_vector, axis=1) /
                                                (np.linalg.norm(bidentated_bond_vector, axis=1) * np.linalg.norm(
                                                    coord_site_vector, axis=1))) * 180 / np.pi
+
                 if np.any(vector_diff_degree > tol_bond_andgle):
                     discard = True
                     break  # discard the complex if the bi-dentated coordination bonds angle is not satisfied
@@ -268,10 +304,6 @@ class Complex:
 
             if discard:
                 continue
-
-            # if the ligands are too close to each other and
-            if min_dst < tol_min_dst:
-                continue  # discard the complex if the ligands are too close to each other
 
             # append valid complex structure
             com_list.append(com)
@@ -295,7 +327,8 @@ class Complex:
         return self.complex
 
     @staticmethod
-    def place_ligand(ligand: Ligand, pos, bond_dst) -> Atoms:
+    def place_ligand(ligand: Ligand, pos, bond_dst, bidenated_dihedral_threshold=20,
+                     ) -> Atoms:
         """
         Place a ligand at a given position of complex.
         :param ligand: ligand object
@@ -319,10 +352,24 @@ class Complex:
             if np.linalg.norm(pos) == 0:
                 pos = np.cross(v1 + 1e-3 * np.random.randn(1), v2 + 1e-3 * np.random.randn(1))
 
+            # check if the bonding sites are pointing to the same direction (center of the complex)
+            pos_atoms1 = np.mean(ligand_structure.positions[ligand._binding_sites_idx[0]], axis=0)
+            pos_atoms1_dir = pos_atoms1 + ligand._direction[0]
+            pos_atoms2 = np.mean(ligand_structure.positions[ligand._binding_sites_idx[1]], axis=0)
+            pos_atoms2_dir = pos_atoms2 + ligand._direction[1]
+
+            # the dihedral angle pos_atoms1_dir, pos_atoms1, pos_atoms2, pos_atoms2_dir should be close to 0 or 180
+            dihedral_angle = calculate_dihedral_angle(pos_atoms1_dir, pos_atoms1, pos_atoms2, pos_atoms2_dir)
+
+            if bidenated_dihedral_threshold< dihedral_angle < 180 - bidenated_dihedral_threshold:
+                return None
+            if -180 + bidenated_dihedral_threshold < dihedral_angle < -bidenated_dihedral_threshold:
+                return None
+
         pos = pos / np.linalg.norm(pos)
 
-        # get ligand original position vector
-        ligand_pos = ligand._direction
+        # get ligand original position vector # [1, 3]
+        ligand_pos = np.mean(ligand._direction, axis=0) # [1, 3]
 
         # align the original position vector and directional vector by rotating ligand
         R = rodrigues_rotation_matrix(ligand_pos, pos)
