@@ -109,6 +109,9 @@ def find_ligand_pos(structure: Atoms, anchor: np.ndarray, site: str or [str], de
     ligand_pos = None
     bi_ligand_pos = None
 
+    # random set the direction of the plane ligands [1, -1]
+    random_direction = np.random.choice([1, -1], 1)
+
     if dentate == 1:  # mono-dentate
 
         if len(structure) == 1:  # ligand is single atom
@@ -128,7 +131,7 @@ def find_ligand_pos(structure: Atoms, anchor: np.ndarray, site: str or [str], de
             ligand_center = find_mol_center(structure)
             v_ligand = ligand_center - anchor
 
-            v_normal = v_normal * (np.sign(np.dot(v_normal, v_ligand)) + 1e-2)
+            v_normal = v_normal * (np.sign(np.dot(v_normal, v_ligand)) + 1e-2) * random_direction
 
             ligand_pos = np.expand_dims(v_normal, axis=0)
         else:  # bind to one atom site
@@ -136,6 +139,7 @@ def find_ligand_pos(structure: Atoms, anchor: np.ndarray, site: str or [str], de
             ligand_pos = np.expand_dims(ligand_center, axis=0)
 
     elif dentate == 2:  # bind to bi-dentate
+
         # find the vector on plane (v1,v2) and perpendicular to v_a12
         anchor1 = anchor[0]
         anchor2 = anchor[1]
@@ -151,10 +155,10 @@ def find_ligand_pos(structure: Atoms, anchor: np.ndarray, site: str or [str], de
 
             # make v_normal and ligand the same direction
             ligand_center = find_mol_center(structure)
-            v_ligand = ligand_center - anchor
+            v_ligand = ligand_center - anchor[0]
 
             v_normal = v_normal * (np.sign(np.dot(v_normal, v_ligand)) + 1e-2)
-            u1 = v_normal
+            u1 = v_normal * random_direction
         else:
             anchor1_dir = find_near_center(structure, anchor1, anchor_connect_num)
             u1 = anchor1_dir - anchor1
@@ -171,10 +175,10 @@ def find_ligand_pos(structure: Atoms, anchor: np.ndarray, site: str or [str], de
 
             # make v_normal and ligand the same direction
             ligand_center = find_mol_center(structure)
-            v_ligand = ligand_center - anchor
+            v_ligand = ligand_center - anchor[1]
 
             v_normal = v_normal * (np.sign(np.dot(v_normal, v_ligand)) + 1e-2)
-            u2 = v_normal
+            u2 = v_normal * random_direction
         else:
             anchor2_dir = find_near_center(structure, anchor2, anchor_connect_num)
             u2 = anchor2_dir - anchor2
@@ -242,9 +246,9 @@ def get_bond_dst(atom1: str, atom2: str or [str], num_dentate: int) -> float:
 
 def get_bond_radii(atom: str) -> float:
     if atom == "=":
-        dst = 0.7  # assuming bond length of pi site is 0.7 A
+        dst = 0.8 # assuming bond length of pi site is 0.7 A
     elif atom == "ring":
-        dst = 0.6  # assuming bond length of ring site is 0.6 A
+        dst = 0.8  # assuming bond length of ring site is 0.6 A
     else:
         s = Atoms(atom).numbers[0]
         dst = covalent_radii[s]

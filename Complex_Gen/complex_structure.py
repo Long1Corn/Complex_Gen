@@ -7,7 +7,7 @@ from rdkit.Chem import AllChem
 
 from Complex_Gen.functional import get_bond_dst, find_ligand_pos, rodrigues_rotation_matrix, \
     rotate_bidendate_angel, rotate_point_about_vector, check_atoms_distance, Center_Geo_Type, calculate_dihedral_angle, \
-find_near_center
+    find_near_center, find_near_atoms
 
 
 class Ligand:
@@ -39,7 +39,6 @@ class Ligand:
             self.dentate = 1
         elif len(self._sites_loc_idx) == 2:
             self.dentate = 2
-
 
         self._gen_conformer()
 
@@ -74,7 +73,7 @@ class Ligand:
         # get anchor and direction
 
         self._anchor = self._find_anchor(self.dentate)
-        self._direction = self._find_ligand_pos() # [N, 3]
+        self._direction = self._find_ligand_pos()  # [N, 3]
 
     def _get_structure_from_smiles(self, max_conformers=1000):
         # Create RDKit molecule from SMILES
@@ -127,7 +126,8 @@ class Ligand:
 
     def _find_ligand_pos(self) -> np.ndarray:
         """try to find the name of the binding site and the geometric center of the ligand"""
-        ligand_pos = find_ligand_pos(self._structure, self._anchor, self._binding_sites, self.dentate, self.anchor_connect_num)
+        ligand_pos = find_ligand_pos(self._structure, self._anchor, self._binding_sites, self.dentate,
+                                     self.anchor_connect_num)
 
         return ligand_pos
 
@@ -177,6 +177,7 @@ class Complex:
                          ) -> Atoms or None:
         """
         Generate the initial complex structure.
+        :param bidenated_dihedral_threshold:  threshold of the dihedral angle between two binding sites
         :param max_attempt: maximum number of attempts to generate the complex, also control number of conformers
         :param tol_min_dst: minimum distance between ligands, absolute value angstrom
         :param tol_bond_dst: tolerance of bond distance, fraction of the bond distance
@@ -204,7 +205,7 @@ class Complex:
 
             for i in range(len(self._ligands)):
 
-                try: # generate conformer for ligand, if failed, continue to the next conformer
+                try:  # generate conformer for ligand, if failed, continue to the next conformer
                     self._ligands[i]._gen_conformer()
                 except:
                     discard = True
@@ -236,7 +237,7 @@ class Complex:
                 ligand_coord = self.place_ligand(self._ligands[i], direction, bond_dst * angel_factor,
                                                  bidenated_dihedral_threshold=bidenated_dihedral_threshold)
 
-                if ligand_coord is None: # discard the ligand if it cannot be placed
+                if ligand_coord is None:  # discard the ligand if it cannot be placed
                     discard = True
                     break
 
@@ -277,11 +278,26 @@ class Complex:
 
                 bidentated_bond_vector = []
                 for bidenated_binding_atom in bidenated_binding_atoms:
+                    bidentated_atom_pos = np.mean(com.positions[bidenated_binding_atom], axis=0)
 
-                    bidentated_atom_pos = com.positions[bidenated_binding_atom]
-                    bidentated_bond_pos = find_near_center(com[self.get_ligand_atom_index(ligand_index)],
-                                                           bidentated_atom_pos,
-                                                           self._ligands[ligand_index].anchor_connect_num)
+                    if self._ligands[ligand_index]._binding_sites == "=" or self._ligands[ligand_index]._binding_sites == "ring":
+                        bidentated_bond_pos = find_near_center(com[self.get_ligand_atom_index(ligand_index)],
+                                                               bidentated_atom_pos,
+                                                               self._ligands[ligand_index].anchor_connect_num) - bidentated_atom_pos
+                    else:
+                        # find the normal vector of the site plane
+                        near_atoms_idx = find_near_atoms(com[self.get_ligand_atom_index(ligand_index)],
+                                                         bidentated_atom_pos, 3)
+
+                        v1 = com[near_atoms_idx[0]].position - com[near_atoms_idx[1]].position
+                        v2 = com[near_atoms_idx[0]].position - com[near_atoms_idx[2]].position
+
+                        # find the normal vector of the ring plane described by v1, v2
+                        v_normal = np.cross(v1, v2)
+
+                        # make v_normal and bond the same direction
+                        bidentated_bond_pos = v_normal * (np.sign(np.dot(v_normal, bidentated_atom_pos)) + 1e-2)
+
                     bidentated_bond_vector.append(bidentated_bond_pos)
 
                 bidentated_bond_vector = np.array(bidentated_bond_vector).squeeze()
@@ -361,7 +377,7 @@ class Complex:
             # the dihedral angle pos_atoms1_dir, pos_atoms1, pos_atoms2, pos_atoms2_dir should be close to 0 or 180
             dihedral_angle = calculate_dihedral_angle(pos_atoms1_dir, pos_atoms1, pos_atoms2, pos_atoms2_dir)
 
-            if bidenated_dihedral_threshold< dihedral_angle < 180 - bidenated_dihedral_threshold:
+            if bidenated_dihedral_threshold < dihedral_angle < 180 - bidenated_dihedral_threshold:
                 return None
             if -180 + bidenated_dihedral_threshold < dihedral_angle < -bidenated_dihedral_threshold:
                 return None
@@ -369,7 +385,7 @@ class Complex:
         pos = pos / np.linalg.norm(pos)
 
         # get ligand original position vector # [1, 3]
-        ligand_pos = np.mean(ligand._direction, axis=0) # [1, 3]
+        ligand_pos = np.mean(ligand._direction, axis=0)  # [1, 3]
 
         # align the original position vector and directional vector by rotating ligand
         R = rodrigues_rotation_matrix(ligand_pos, pos)
