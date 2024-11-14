@@ -84,8 +84,8 @@ def find_near_atoms(structure: Atoms, anchor: np.ndarray, num: int) -> np.ndarra
     dst = []
     for idx, atom in enumerate(structure):
         # Skip hydrogen atoms
-        if atom.symbol != 'H':
-            dst.append((np.linalg.norm(atom.position - anchor), idx))
+        # if atom.symbol != 'H':
+        dst.append((np.linalg.norm(atom.position - anchor), idx))
 
     # Sort by distance, but keep the atom index information
     sorted_dst = sorted(dst, key=lambda x: x[0])
