@@ -280,11 +280,7 @@ class Complex:
                 for bidenated_binding_atom in bidenated_binding_atoms:
                     bidentated_atom_pos = np.mean(com.positions[bidenated_binding_atom], axis=0)
 
-                    if self._ligands[ligand_index]._binding_sites == "=" or self._ligands[ligand_index]._binding_sites == "ring":
-                        bidentated_bond_pos = find_near_center(com[self.get_ligand_atom_index(ligand_index)],
-                                                               bidentated_atom_pos,
-                                                               self._ligands[ligand_index].anchor_connect_num) - bidentated_atom_pos
-                    else:
+                    if self._ligands[ligand_index]._binding_sites[i] == "=" or self._ligands[ligand_index]._binding_sites[i] == "ring":
                         # find the normal vector of the site plane
                         near_atoms_idx = find_near_atoms(com[self.get_ligand_atom_index(ligand_index)],
                                                          bidentated_atom_pos, 3)
@@ -297,6 +293,11 @@ class Complex:
 
                         # make v_normal and bond the same direction
                         bidentated_bond_pos = v_normal * (np.sign(np.dot(v_normal, bidentated_atom_pos)) + 1e-2)
+
+                    else:
+                        bidentated_bond_pos = find_near_center(com[self.get_ligand_atom_index(ligand_index)],
+                                                               bidentated_atom_pos,
+                                                               self._ligands[ligand_index].anchor_connect_num) - bidentated_atom_pos
 
                     bidentated_bond_vector.append(bidentated_bond_pos)
 
